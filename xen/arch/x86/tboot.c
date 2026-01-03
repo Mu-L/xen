@@ -202,7 +202,7 @@ static void tboot_gen_domain_integrity(const uint8_t key[TB_KEY_SIZE],
     uint8_t nonce[16] = {};
     vmac_ctx_t ctx;
 
-    vmac_set_key((uint8_t *)key, &ctx);
+    vmac_set_key(key, &ctx);
     for_each_domain( d )
     {
         if ( !(d->options & XEN_DOMCTL_CDF_s3_integrity) )
@@ -241,7 +241,7 @@ static void tboot_gen_xenheap_integrity(const uint8_t key[TB_KEY_SIZE],
     uint8_t nonce[16] = {};
     vmac_ctx_t ctx;
 
-    vmac_set_key((uint8_t *)key, &ctx);
+    vmac_set_key(key, &ctx);
     for ( mfn = 0; mfn < max_page; mfn++ )
     {
         struct page_info *page = mfn_to_page(_mfn(mfn));
@@ -272,7 +272,7 @@ static void tboot_gen_frametable_integrity(const uint8_t key[TB_KEY_SIZE],
     uint8_t nonce[16] = {};
     vmac_ctx_t ctx;
 
-    vmac_set_key((uint8_t *)key, &ctx);
+    vmac_set_key(key, &ctx);
     for ( sidx = 0; ; sidx = nidx )
     {
         eidx = find_next_zero_bit(pdx_group_valid, max_idx, sidx);

@@ -924,7 +924,7 @@ uint64_t vmac(unsigned char m[],
 
 /* ----------------------------------------------------------------------- */
 
-void vmac_set_key(unsigned char user_key[], vmac_ctx_t *ctx)
+void vmac_set_key(const unsigned char user_key[], vmac_ctx_t *ctx)
 {
     uint64_t in[2] = {0}, out[2];
     unsigned i;

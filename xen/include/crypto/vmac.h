@@ -161,7 +161,7 @@ uint64_t vhash(unsigned char m[],
  * When passed a VMAC_KEY_LEN bit user_key, this function initialazies ctx.
  * ----------------------------------------------------------------------- */
 
-void vmac_set_key(unsigned char user_key[], vmac_ctx_t *ctx);
+void vmac_set_key(const unsigned char user_key[], vmac_ctx_t *ctx);
 
 /* --------------------------------------------------------------------- */
 
