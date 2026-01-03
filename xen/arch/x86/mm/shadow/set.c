@@ -62,8 +62,8 @@ shadow_write_entries(void *d, const void *s, unsigned int entries, mfn_t mfn)
 
     ASSERT(IS_ALIGNED((unsigned long)dst, sizeof(*dst)));
 
-    for ( ; i < entries; i++ )
-        write_atomic(&dst++->l1, src++->l1);
+    for ( ; i < entries; i++, dst++, src++ )
+        write_atomic(&dst->l1, src->l1);
 
     unmap_domain_page(map);
 }
