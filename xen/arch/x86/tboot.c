@@ -41,8 +41,8 @@ static bool __ro_after_init is_vtd;
  * TXT configuration registers (offsets from TXT_{PUB, PRIV}_CONFIG_REGS_BASE)
  */
 
-#define TXT_PUB_CONFIG_REGS_BASE       0xfed30000
-#define TXT_PRIV_CONFIG_REGS_BASE      0xfed20000
+#define TXT_PUB_CONFIG_REGS_BASE       0xfed30000U
+#define TXT_PRIV_CONFIG_REGS_BASE      0xfed20000U
 
 /* # pages for each config regs space - used by fixmap */
 #define NR_TXT_CONFIG_PAGES     ((TXT_PUB_CONFIG_REGS_BASE -                \

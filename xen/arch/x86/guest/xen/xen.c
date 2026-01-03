@@ -120,7 +120,7 @@ static void map_shared_info(void)
 
     /* Mask all upcalls */
     for ( i = 0; i < ARRAY_SIZE(XEN_shared_info->evtchn_mask); i++ )
-        write_atomic(&XEN_shared_info->evtchn_mask[i], ~0ul);
+        write_atomic(&XEN_shared_info->evtchn_mask[i], ~0UL);
 }
 
 static int map_vcpuinfo(void)

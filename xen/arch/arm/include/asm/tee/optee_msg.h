@@ -222,10 +222,10 @@ struct optee_msg_arg {
  * Represented in 4 32-bit words in OPTEE_MSG_UID_0, OPTEE_MSG_UID_1,
  * OPTEE_MSG_UID_2, OPTEE_MSG_UID_3.
  */
-#define OPTEE_MSG_UID_0			0x384fb3e0
-#define OPTEE_MSG_UID_1			0xe7f811e3
-#define OPTEE_MSG_UID_2			0xaf630002
-#define OPTEE_MSG_UID_3			0xa5d5c51b
+#define OPTEE_MSG_UID_0			0x384fb3e0U
+#define OPTEE_MSG_UID_1			0xe7f811e3U
+#define OPTEE_MSG_UID_2			0xaf630002U
+#define OPTEE_MSG_UID_3			0xa5d5c51bU
 #define OPTEE_MSG_FUNCID_CALLS_UID	0xFF01
 
 /*
@@ -246,10 +246,10 @@ struct optee_msg_arg {
  * Returns UUID in 4 32-bit words in the same way as
  * OPTEE_MSG_FUNCID_CALLS_UID described above.
  */
-#define OPTEE_MSG_OS_OPTEE_UUID_0	0x486178e0
-#define OPTEE_MSG_OS_OPTEE_UUID_1	0xe7f811e3
-#define OPTEE_MSG_OS_OPTEE_UUID_2	0xbc5e0002
-#define OPTEE_MSG_OS_OPTEE_UUID_3	0xa5d5c51b
+#define OPTEE_MSG_OS_OPTEE_UUID_0	0x486178e0U
+#define OPTEE_MSG_OS_OPTEE_UUID_1	0xe7f811e3U
+#define OPTEE_MSG_OS_OPTEE_UUID_2	0xbc5e0002U
+#define OPTEE_MSG_OS_OPTEE_UUID_3	0xa5d5c51bU
 #define OPTEE_MSG_FUNCID_GET_OS_UUID	0x0000
 
 /*

@@ -76,7 +76,7 @@ static const struct its_quirk its_quirks[] = {
     {
         .desc	= "R-Car Gen4",
         .iidr	= 0x0201743b,
-        .mask	= 0xffffffff,
+        .mask	= 0xffffffffU,
         .init	= gicv3_its_enable_quirk_gen4,
     },
     {

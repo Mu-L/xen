@@ -32,7 +32,7 @@ static int read_gate_descriptor(unsigned int gate_sel,
         return 0;
 
     *sel = (desc.a >> 16) & 0x0000fffc;
-    *off = (desc.a & 0x0000ffff) | (desc.b & 0xffff0000);
+    *off = (desc.a & 0x0000ffff) | (desc.b & 0xffff0000U);
     *ar = desc.b & 0x0000ffff;
 
     /*

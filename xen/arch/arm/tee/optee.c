@@ -49,16 +49,16 @@
 #define TEEC_ORIGIN_COMMS 0x00000002
 
 /* "Non-specific cause" as in GP TEE Client API Specification */
-#define TEEC_ERROR_GENERIC 0xFFFF0000
+#define TEEC_ERROR_GENERIC 0xFFFF0000U
 
 /*
  * "Input parameters were invalid" as described
  * in GP TEE Client API Specification.
  */
-#define TEEC_ERROR_BAD_PARAMETERS 0xFFFF0006
+#define TEEC_ERROR_BAD_PARAMETERS 0xFFFF0006U
 
 /* "System ran out of resources" as in GP TEE Client API Specification */
-#define TEEC_ERROR_OUT_OF_MEMORY 0xFFFF000C
+#define TEEC_ERROR_OUT_OF_MEMORY 0xFFFF000CU
 
 /* Client ID 0 is reserved for the hypervisor itself */
 #define OPTEE_CLIENT_ID(domain) ((domain)->domain_id + 1)
