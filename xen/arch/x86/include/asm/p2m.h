@@ -773,7 +773,7 @@ static inline int relinquish_p2m_mapping(struct domain *d)
  */
 
 /* Modify p2m table for shared gfn */
-int set_shared_p2m_entry(struct domain *d, unsigned long gfn, mfn_t mfn);
+int set_shared_p2m_entry(struct domain *d, unsigned long gfn_l, mfn_t mfn);
 
 /* Tell xenpaging to drop a paged out frame */
 void p2m_mem_paging_drop_page(struct domain *d, gfn_t gfn, p2m_type_t p2mt);

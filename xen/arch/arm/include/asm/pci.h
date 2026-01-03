@@ -98,7 +98,7 @@ struct pci_ecam_ops {
     unsigned int            bus_shift;
     struct pci_ops          pci_ops;
     int (*cfg_reg_index)(struct dt_device_node *dev);
-    int (*init)(struct pci_config_window *);
+    int (*init)(struct pci_config_window *cfg);
 };
 
 /* Default ECAM ops */

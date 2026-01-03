@@ -702,7 +702,7 @@ static uint64_t l3hash(uint64_t p1, uint64_t p2,
 
 /* ----------------------------------------------------------------------- */
 
-void vhash_update(unsigned char *m,
+void vhash_update(unsigned char  m[],
                   unsigned int   mbytes, /* Pos multiple of VMAC_NHBYTES */
                   vmac_ctx_t    *ctx)
 {

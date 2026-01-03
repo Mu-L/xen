@@ -135,9 +135,9 @@ static void pci_config_write(pci_sbdf_t sbdf, unsigned int reg,
 
 #define PCI_OP_WRITE(size, type)                            \
     void pci_conf_write##size(pci_sbdf_t sbdf,              \
-                              unsigned int reg, type val)   \
+                              unsigned int reg, type data)  \
 {                                                           \
-    pci_config_write(sbdf, reg, size / 8, val);             \
+    pci_config_write(sbdf, reg, size / 8, data);            \
 }
 
 #define PCI_OP_READ(size, type)                             \
