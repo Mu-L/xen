@@ -2,6 +2,7 @@
 #include <xen/init.h>
 #include <xen/lib.h>
 #include <xen/random.h>
+#include <xen/stack-protector.h>
 #include <xen/time.h>
 
 /*

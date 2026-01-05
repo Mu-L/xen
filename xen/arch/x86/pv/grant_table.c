@@ -12,6 +12,7 @@
 #include <public/grant_table.h>
 
 #include <asm/p2m.h>
+#include <asm/pv/grant_table.h>
 #include <asm/pv/mm.h>
 
 #include "mm.h"

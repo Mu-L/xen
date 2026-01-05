@@ -12,6 +12,7 @@
 
 #include <asm/current.h>
 #include <asm/p2m.h>
+#include <asm/pv/mm.h>
 
 #include "mm.h"
 

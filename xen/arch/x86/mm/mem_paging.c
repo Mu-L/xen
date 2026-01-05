@@ -7,10 +7,12 @@
  * Copyright (c) 2009 Citrix Systems, Inc. (Patrick Colp)
  */
 
-
-#include <asm/p2m.h>
 #include <xen/guest_access.h>
 #include <xen/vm_event.h>
+
+#include <asm/mem_paging.h>
+#include <asm/p2m.h>
+
 #include <xsm/xsm.h>
 
 #include "mm-locks.h"

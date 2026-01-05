@@ -8,6 +8,7 @@
  * Copyright (c) 2004 Christian Limpach
  */
 
+#include <asm/pv/mm.h>
 #include <asm/pv/trace.h>
 #include <asm/shadow.h>
 

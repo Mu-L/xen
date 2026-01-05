@@ -9,6 +9,8 @@
 
 #include <xen/err.h>
 
+#include <asm/pv/traps.h>
+
 #include "emulate.h"
 
 static int read_gate_descriptor(unsigned int gate_sel,

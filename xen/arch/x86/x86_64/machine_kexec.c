@@ -6,8 +6,9 @@
  * - Magnus Damm <magnus@valinux.co.jp>
  */
 
-#include <xen/types.h>
 #include <xen/kernel.h>
+#include <xen/kexec.h>
+
 #include <asm/page.h>
 #include <public/kexec.h>
 

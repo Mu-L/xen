@@ -10,6 +10,7 @@
 #include <xen/guest_access.h>
 
 #include <asm/debugreg.h>
+#include <asm/pv/domain.h>
 
 #include "emulate.h"
 

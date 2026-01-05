@@ -1,6 +1,8 @@
 #ifndef __XEN_STACK_PROTECTOR_H__
 #define __XEN_STACK_PROTECTOR_H__
 
+#include <xen/time.h>
+
 extern unsigned long __stack_chk_guard;
 
 /*

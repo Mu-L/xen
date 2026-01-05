@@ -16,6 +16,7 @@
 #include <asm/idt.h>
 #include <asm/irq-vectors.h>
 #include <asm/pv/trace.h>
+#include <asm/pv/traps.h>
 #include <asm/shared.h>
 #include <asm/traps.h>
 

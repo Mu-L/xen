@@ -10,6 +10,12 @@
 #ifndef __X86_PV_MM_H__
 #define __X86_PV_MM_H__
 
+#include <xen/stdbool.h>
+
+struct cpu_user_regs;
+struct page_info;
+struct vcpu;
+
 #ifdef CONFIG_PV
 
 int pv_ro_page_fault(unsigned long addr, struct cpu_user_regs *regs);
@@ -26,7 +32,7 @@ int validate_segdesc_page(struct page_info *page);
 #else
 
 #include <xen/errno.h>
-#include <xen/lib.h>
+#include <xen/bug.h>
 
 static inline int pv_ro_page_fault(unsigned long addr,
                                    struct cpu_user_regs *regs)
