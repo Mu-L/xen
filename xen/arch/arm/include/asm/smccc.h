@@ -114,31 +114,31 @@ struct arm_smccc_res {
 
 #define __declare_arg_1(a0, a1, res)                        \
     __declare_arg_0(a0, res);                               \
-    register typeof(a1)     arg1 ASM_REG(1) = (a1)
+    register auto           arg1 ASM_REG(1) = (a1)
 
 #define __declare_arg_2(a0, a1, a2, res)                    \
     __declare_arg_1(a0, a1, res);                           \
-    register typeof(a2)     arg2 ASM_REG(2) = (a2)
+    register auto           arg2 ASM_REG(2) = (a2)
 
 #define __declare_arg_3(a0, a1, a2, a3, res)                \
     __declare_arg_2(a0, a1, a2, res);                       \
-    register typeof(a3)     arg3 ASM_REG(3) = (a3)
+    register auto           arg3 ASM_REG(3) = (a3)
 
 #define __declare_arg_4(a0, a1, a2, a3, a4, res)        \
     __declare_arg_3(a0, a1, a2, a3, res);               \
-    register typeof(a4)     arg4 ASM_REG(4) = (a4)
+    register auto           arg4 ASM_REG(4) = (a4)
 
 #define __declare_arg_5(a0, a1, a2, a3, a4, a5, res)    \
     __declare_arg_4(a0, a1, a2, a3, a4, res);           \
-    register typeof(a5)     arg5 ASM_REG(5) = (a5)
+    register auto           arg5 ASM_REG(5) = (a5)
 
 #define __declare_arg_6(a0, a1, a2, a3, a4, a5, a6, res)    \
     __declare_arg_5(a0, a1, a2, a3, a4, a5, res);           \
-    register typeof(a6)     arg6 ASM_REG(6) = (a6)
+    register auto           arg6 ASM_REG(6) = (a6)
 
 #define __declare_arg_7(a0, a1, a2, a3, a4, a5, a6, a7, res)    \
     __declare_arg_6(a0, a1, a2, a3, a4, a5, a6, res);           \
-    register typeof(a7)     arg7 ASM_REG(7) = (a7)
+    register auto           arg7 ASM_REG(7) = (a7)
 
 #define ___declare_args(count, ...) __declare_arg_ ## count(__VA_ARGS__)
 #define __declare_args(count, ...)  ___declare_args(count, __VA_ARGS__)

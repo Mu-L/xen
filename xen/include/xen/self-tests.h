@@ -18,7 +18,7 @@
  */
 #define COMPILE_CHECK(fn, val, res)                                     \
     do {                                                                \
-        typeof(fn(val)) real = fn(val);                                 \
+        auto real = fn(val);                                            \
                                                                         \
         if ( !__builtin_constant_p(real) )                              \
             BUILD_ERROR("'" STR(fn(val)) "' not compile-time constant"); \
@@ -36,7 +36,7 @@
  */
 #define RUNTIME_CHECK(fn, val, res)                     \
     do {                                                \
-        typeof(fn(val)) real = fn(HIDE(val));           \
+        auto real = fn(HIDE(val));                      \
                                                         \
         if ( real != (res) )                            \
             panic("%s: %s(%s) expected %u, got %u\n",   \

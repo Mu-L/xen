@@ -299,7 +299,7 @@ static always_inline attr_const unsigned int fls64(uint64_t x)
  * A copy of @val is taken internally.
  */
 #define for_each_set_bit(iter, val)                     \
-    for ( typeof(val) __v = (val); __v; __v = 0 )       \
+    for ( auto __v = (val); __v; __v = 0 )              \
         for ( unsigned int (iter);                      \
               __v && ((iter) = ffs_g(__v) - 1, true);   \
               __v &= __v - 1 )
@@ -310,7 +310,7 @@ static always_inline attr_const unsigned int fls64(uint64_t x)
  */
 #define multiple_bits_set(x)                    \
     ({                                          \
-        typeof(x) _v = (x);                     \
+        auto _v = (x);                          \
         (_v & (_v - 1)) != 0;                   \
     })
 

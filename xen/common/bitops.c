@@ -147,7 +147,7 @@ static void __init test_for_each_set_bit(void)
  * A copy of @val is taken internally.
  */
 #define for_each_set_bit_reverse(iter, val)             \
-    for ( typeof(val) __v = (val); __v; __v = 0 )       \
+    for ( auto __v = (val); __v; __v = 0 )              \
         for ( unsigned int (iter);                      \
               __v && ((iter) = fls_g(__v) - 1, true);   \
               __clear_bit(iter, &__v) )
