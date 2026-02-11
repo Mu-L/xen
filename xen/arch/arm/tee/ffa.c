@@ -433,6 +433,51 @@ static bool ffa_handle_call(struct cpu_user_regs *regs)
     return true;
 }
 
+/*
+ * Look up a domain by its FF-A endpoint ID and validate it's ready for FF-A.
+ * Returns FFA_RET_OK on success with domain locked via RCU.
+ * Caller must call rcu_unlock_domain() when done.
+ *
+ * Validates:
+ * - endpoint_id is not 0 (the hypervisor)
+ * - domain exists and is live
+ * - domain has FF-A context initialized
+ * - domain has negotiated an FF-A version
+ */
+int32_t ffa_endpoint_domain_lookup(uint16_t endpoint_id, struct domain **d_out,
+                                   struct ffa_ctx **ctx_out)
+{
+    struct domain *d;
+    struct ffa_ctx *ctx;
+    int err;
+
+    if ( endpoint_id == 0 )
+        return FFA_RET_INVALID_PARAMETERS;
+
+    err = rcu_lock_live_remote_domain_by_id(endpoint_id - 1, &d);
+    if ( err )
+        return FFA_RET_INVALID_PARAMETERS;
+
+    if ( !d->arch.tee )
+    {
+        rcu_unlock_domain(d);
+        return FFA_RET_INVALID_PARAMETERS;
+    }
+
+    ctx = d->arch.tee;
+    if ( !ACCESS_ONCE(ctx->guest_vers) )
+    {
+        rcu_unlock_domain(d);
+        return FFA_RET_INVALID_PARAMETERS;
+    }
+
+    *d_out = d;
+    if ( ctx_out )
+        *ctx_out = ctx;
+
+    return FFA_RET_OK;
+}
+
 static int ffa_domain_init(struct domain *d)
 {
     struct ffa_ctx *ctx;

@@ -161,30 +161,12 @@ static int32_t ffa_msg_send2_vm(uint16_t dst_id, const void *src_buf,
     struct ffa_part_msg_rxtx_1_2 *dst_msg;
     void *rx_buf;
     size_t rx_size;
-    int err;
     int32_t ret;
 
-    if ( dst_id == 0 )
-        /* FF-A ID 0 is the hypervisor, this is not valid */
-        return FFA_RET_INVALID_PARAMETERS;
-
     /* This is also checking that dest is not src */
-    err = rcu_lock_live_remote_domain_by_id(dst_id - 1, &dst_d);
-    if ( err )
-        return FFA_RET_INVALID_PARAMETERS;
-
-    if ( dst_d->arch.tee == NULL )
-    {
-        ret = FFA_RET_INVALID_PARAMETERS;
-        goto out_unlock;
-    }
-
-    dst_ctx = dst_d->arch.tee;
-    if ( !ACCESS_ONCE(dst_ctx->guest_vers) )
-    {
-        ret = FFA_RET_INVALID_PARAMETERS;
-        goto out_unlock;
-    }
+    ret = ffa_endpoint_domain_lookup(dst_id, &dst_d, &dst_ctx);
+    if ( ret )
+        return ret;
 
     /* This also checks that destination has set a Rx buffer */
     ret = ffa_rx_acquire(dst_ctx , &rx_buf, &rx_size);

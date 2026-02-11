@@ -437,6 +437,9 @@ int32_t ffa_partinfo_domain_init(struct domain *d);
 bool ffa_partinfo_domain_destroy(struct domain *d);
 void ffa_handle_partition_info_get(struct cpu_user_regs *regs);
 
+int32_t ffa_endpoint_domain_lookup(uint16_t endpoint_id, struct domain **d_out,
+                                   struct ffa_ctx **ctx_out);
+
 bool ffa_rxtx_spmc_init(void);
 void ffa_rxtx_spmc_destroy(void);
 void *ffa_rxtx_spmc_rx_acquire(void);
