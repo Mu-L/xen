@@ -632,4 +632,15 @@ static inline void ffa_uuid_set(struct ffa_uuid *id, uint32_t val0,
     id->val[1] = ((uint64_t)val3 << 32U) | val2;
 }
 
+/*
+ * Common overflow-safe helper to verify that adding a number of pages to an
+ * address will not wrap around.
+ */
+static inline bool ffa_safe_addr_add(uint64_t addr, uint64_t pages)
+{
+    uint64_t off = pages * FFA_PAGE_SIZE;
+
+    return (off / FFA_PAGE_SIZE) == pages && addr <= UINT64_MAX - off;
+}
+
 #endif /*__FFA_PRIVATE_H__*/

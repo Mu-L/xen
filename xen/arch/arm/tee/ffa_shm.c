@@ -96,16 +96,14 @@ struct ffa_shm_mem {
     struct page_info *pages[];
 };
 
-static int32_t ffa_mem_share(uint32_t tot_len, uint32_t frag_len,
-                             register_t addr, uint32_t pg_count,
-                             uint64_t *handle)
+static int32_t ffa_spmc_share(uint32_t tot_len, uint64_t *handle)
 {
     struct arm_smccc_1_2_regs arg = {
         .a0 = FFA_MEM_SHARE_64,
         .a1 = tot_len,
-        .a2 = frag_len,
-        .a3 = addr,
-        .a4 = pg_count,
+        .a2 = tot_len,
+        .a3 = 0,
+        .a4 = 0,
     };
     struct arm_smccc_1_2_regs resp;
 
@@ -131,11 +129,15 @@ static int32_t ffa_mem_share(uint32_t tot_len, uint32_t frag_len,
     }
 }
 
-static int32_t ffa_mem_reclaim(uint32_t handle_lo, uint32_t handle_hi,
-                               uint32_t flags)
+static int32_t ffa_spmc_reclaim(struct ffa_shm_mem *shm, uint32_t flags)
 {
+    register_t handle_hi;
+    register_t handle_lo;
+
     if ( !ffa_fw_supports_fid(FFA_MEM_RECLAIM) )
         return FFA_RET_NOT_SUPPORTED;
+
+    uint64_to_regpair(&handle_hi, &handle_lo, shm->handle);
 
     return ffa_simple_call(FFA_MEM_RECLAIM, handle_lo, handle_hi, flags, 0);
 }
@@ -145,7 +147,7 @@ static int32_t ffa_mem_reclaim(uint32_t handle_lo, uint32_t handle_hi,
  * this function fails then the caller is still expected to call
  * put_shm_pages() as a cleanup.
  */
-static int get_shm_pages(struct domain *d, struct ffa_shm_mem *shm,
+static int32_t get_shm_pages(struct domain *d, struct ffa_shm_mem *shm,
                          const struct ffa_address_range *range,
                          uint32_t range_count)
 {
@@ -156,17 +158,26 @@ static int get_shm_pages(struct domain *d, struct ffa_shm_mem *shm,
     p2m_type_t t;
     uint64_t addr;
     uint64_t page_count;
+    uint64_t gaddr;
 
     for ( n = 0; n < range_count; n++ )
     {
         page_count = ACCESS_ONCE(range[n].page_count);
         addr = ACCESS_ONCE(range[n].address);
+
+        if ( !IS_ALIGNED(addr, FFA_PAGE_SIZE) )
+            return FFA_RET_INVALID_PARAMETERS;
+
         for ( m = 0; m < page_count; m++ )
         {
             if ( pg_idx >= shm->page_count )
                 return FFA_RET_INVALID_PARAMETERS;
 
-            gfn = gaddr_to_gfn(addr + m * FFA_PAGE_SIZE);
+            if ( !ffa_safe_addr_add(addr, m) )
+                return FFA_RET_INVALID_PARAMETERS;
+
+            gaddr = addr + m * FFA_PAGE_SIZE;
+            gfn = gaddr_to_gfn(gaddr);
             shm->pages[pg_idx] = get_page_from_gfn(d, gfn_x(gfn), &t,
 						   P2M_ALLOC);
             if ( !shm->pages[pg_idx] )
@@ -180,7 +191,7 @@ static int get_shm_pages(struct domain *d, struct ffa_shm_mem *shm,
 
     /* The ranges must add up */
     if ( pg_idx < shm->page_count )
-            return FFA_RET_INVALID_PARAMETERS;
+        return FFA_RET_INVALID_PARAMETERS;
 
     return FFA_RET_OK;
 }
@@ -198,15 +209,11 @@ static void put_shm_pages(struct ffa_shm_mem *shm)
 
 static bool inc_ctx_shm_count(struct domain *d, struct ffa_ctx *ctx)
 {
-    bool ret = true;
+    bool ret = false;
 
     spin_lock(&ctx->lock);
 
-    if ( ctx->shm_count >= FFA_MAX_SHM_COUNT )
-    {
-        ret = false;
-    }
-    else
+    if ( ctx->shm_count < FFA_MAX_SHM_COUNT )
     {
         /*
          * If this is the first shm added, increase the domain reference
@@ -217,6 +224,7 @@ static bool inc_ctx_shm_count(struct domain *d, struct ffa_ctx *ctx)
             get_knownalive_domain(d);
 
         ctx->shm_count++;
+        ret = true;
     }
 
     spin_unlock(&ctx->lock);
@@ -251,7 +259,7 @@ static struct ffa_shm_mem *alloc_ffa_shm_mem(struct domain *d,
     struct ffa_ctx *ctx = d->arch.tee;
     struct ffa_shm_mem *shm;
 
-    if ( page_count >= FFA_MAX_SHM_PAGE_COUNT )
+    if ( page_count > FFA_MAX_SHM_PAGE_COUNT )
         return NULL;
     if ( !inc_ctx_shm_count(d, ctx) )
         return NULL;
@@ -297,7 +305,6 @@ static int share_shm(struct ffa_shm_mem *shm)
     struct ffa_address_range *addr_range;
     struct ffa_mem_region *region_descr;
     const unsigned int region_count = 1;
-    uint32_t frag_len;
     uint32_t tot_len;
     paddr_t last_pa;
     unsigned int n;
@@ -350,7 +357,6 @@ static int share_shm(struct ffa_shm_mem *shm)
     }
 
     addr_range = region_descr->address_range_array;
-    frag_len = ADDR_RANGE_OFFSET(descr->mem_access_count, region_count, 1);
     last_pa = page_to_maddr(shm->pages[0]);
     init_range(addr_range, last_pa);
     for ( n = 1; n < shm->page_count; last_pa = pa, n++ )
@@ -362,12 +368,11 @@ static int share_shm(struct ffa_shm_mem *shm)
             continue;
         }
 
-        frag_len += sizeof(*addr_range);
         addr_range++;
         init_range(addr_range, pa);
     }
 
-    ret = ffa_mem_share(tot_len, frag_len, 0, 0, &shm->handle);
+    ret = ffa_spmc_share(tot_len, &shm->handle);
 
 out:
     ffa_rxtx_spmc_tx_release();
@@ -637,8 +642,6 @@ int32_t ffa_handle_mem_reclaim(uint64_t handle, uint32_t flags)
     struct domain *d = current->domain;
     struct ffa_ctx *ctx = d->arch.tee;
     struct ffa_shm_mem *shm;
-    register_t handle_hi;
-    register_t handle_lo;
     int32_t ret;
 
     if ( !ffa_fw_supports_fid(FFA_MEM_RECLAIM) )
@@ -652,8 +655,7 @@ int32_t ffa_handle_mem_reclaim(uint64_t handle, uint32_t flags)
     if ( !shm )
         return FFA_RET_INVALID_PARAMETERS;
 
-    uint64_to_regpair(&handle_hi, &handle_lo, handle);
-    ret = ffa_mem_reclaim(handle_lo, handle_hi, flags);
+    ret = ffa_spmc_reclaim(shm, flags);
 
     if ( ret )
     {
@@ -677,11 +679,7 @@ bool ffa_shm_domain_destroy(struct domain *d)
 
     list_for_each_entry_safe(shm, tmp, &ctx->shm_list, list)
     {
-        register_t handle_hi;
-        register_t handle_lo;
-
-        uint64_to_regpair(&handle_hi, &handle_lo, shm->handle);
-        res = ffa_mem_reclaim(handle_lo, handle_hi, 0);
+        res = ffa_spmc_reclaim(shm, 0);
         switch ( res ) {
         case FFA_RET_OK:
             printk(XENLOG_G_DEBUG "%pd: ffa: Reclaimed handle %#lx\n",
