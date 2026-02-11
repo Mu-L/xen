@@ -461,9 +461,11 @@ static bool init_subscribers(void *buf, uint16_t count, uint32_t fpi_size)
          */
         if ( !FFA_ID_IS_SECURE(fpi->id) )
         {
-            printk(XENLOG_ERR "ffa: Firmware is not using bit 15 convention for IDs !!\n"
-                              "ffa: Secure partition with id 0x%04x cannot be used\n",
-                              fpi->id);
+            printk_once(XENLOG_ERR
+                        "ffa: Firmware is not using bit 15 convention for IDs !!\n");
+            printk(XENLOG_ERR
+                   "ffa: Secure partition with id 0x%04x cannot be used\n",
+                   fpi->id);
         }
         else
         {
@@ -632,11 +634,10 @@ bool ffa_partinfo_domain_destroy(struct domain *d)
         res = ffa_direct_req_send_vm(subscr_vm_destroyed[n], ffa_get_vm_id(d),
                                      FFA_MSG_SEND_VM_DESTROYED);
 
-        if ( res )
-        {
-            printk(XENLOG_ERR "%pd: ffa: Failed to report destruction of vm_id %u to %u: res %d\n",
+        if ( res && printk_ratelimit() )
+            printk(XENLOG_WARNING
+                   "%pd: ffa: Failed to report destruction of vm_id %u to %u: res %d\n",
                    d, ffa_get_vm_id(d), subscr_vm_destroyed[n], res);
-        }
 
         /*
          * For these two error codes the hypervisor is expected to resend

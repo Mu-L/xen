@@ -4,6 +4,7 @@
  */
 
 #include <xen/const.h>
+#include <xen/lib.h>
 #include <xen/domain_page.h>
 #include <xen/mm.h>
 #include <xen/sizes.h>
@@ -82,8 +83,9 @@ int32_t ffa_handle_rxtx_map(uint32_t fid, register_t tx_addr,
 
     if ( page_count > FFA_MAX_RXTX_PAGE_COUNT || !page_count )
     {
-        printk(XENLOG_ERR "ffa: RXTX_MAP: error: %u pages requested (limit %u)\n",
-               page_count, FFA_MAX_RXTX_PAGE_COUNT);
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: RXTX_MAP: error: %u pages requested (limit %u)\n",
+                 page_count, FFA_MAX_RXTX_PAGE_COUNT);
         return FFA_RET_INVALID_PARAMETERS;
     }
 
@@ -299,12 +301,15 @@ int32_t ffa_rx_acquire(struct ffa_ctx *ctx, void **buf, size_t *buf_size)
     if ( !ctx->page_count )
     {
         ret = FFA_RET_DENIED;
+        gdprintk(XENLOG_DEBUG, "ffa: RX acquire denied, no RX/TX mapped\n");
         goto out;
     }
 
     if ( !ctx->rx_is_free )
     {
         ret = FFA_RET_BUSY;
+        if ( printk_ratelimit() )
+            gdprintk(XENLOG_DEBUG, "ffa: RX acquire busy\n");
         goto out;
     }
 
@@ -312,7 +317,10 @@ int32_t ffa_rx_acquire(struct ffa_ctx *ctx, void **buf, size_t *buf_size)
     {
         ret = ffa_simple_call(FFA_RX_ACQUIRE, ctx->ffa_id, 0, 0, 0);
         if ( ret != FFA_RET_OK )
+        {
+            gdprintk(XENLOG_DEBUG, "ffa: RX acquire failed: %d\n", ret);
             goto out;
+        }
     }
     ctx->rx_is_free = false;
     *buf = ctx->rx;
@@ -351,13 +359,22 @@ int32_t ffa_tx_acquire(struct ffa_ctx *ctx, const void **buf, size_t *buf_size)
     int32_t ret = FFA_RET_DENIED;
 
     if ( !spin_trylock(&ctx->tx_lock) )
+    {
+        gdprintk(XENLOG_DEBUG, "ffa: TX acquire busy\n");
         return FFA_RET_BUSY;
+    }
 
     if ( !ctx->page_count )
+    {
+        gdprintk(XENLOG_DEBUG, "ffa: TX acquire denied, no RX/TX mapped\n");
         goto err_unlock;
+    }
 
     if ( !ctx->tx )
+    {
+        gdprintk(XENLOG_DEBUG, "ffa: TX acquire denied, TX buffer missing\n");
         goto err_unlock;
+    }
 
     *buf = ctx->tx;
     *buf_size = ctx->page_count * FFA_PAGE_SIZE;

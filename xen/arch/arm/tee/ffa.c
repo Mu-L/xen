@@ -450,7 +450,7 @@ static bool ffa_handle_call(struct cpu_user_regs *regs)
         break;
 
     default:
-        gprintk(XENLOG_ERR, "ffa: unhandled fid 0x%x\n", fid);
+        gdprintk(XENLOG_DEBUG, "ffa: unhandled fid 0x%x\n", fid);
         e = FFA_RET_NOT_SUPPORTED;
         break;
     }
@@ -570,7 +570,8 @@ static void ffa_domain_teardown_continue(struct ffa_ctx *ctx, bool first_time)
 
     if ( retry )
     {
-        printk(XENLOG_G_INFO "%pd: ffa: Remaining cleanup, retrying\n", ctx->teardown_d);
+        printk(XENLOG_G_DEBUG "%pd: ffa: Remaining cleanup, retrying\n",
+               ctx->teardown_d);
 
         ctx->teardown_expire = NOW() + FFA_CTX_TEARDOWN_DELAY;
 
@@ -611,7 +612,7 @@ static void ffa_teardown_timer_callback(void *arg)
     if ( ctx )
         ffa_domain_teardown_continue(ctx, false /* !first_time */);
     else
-        printk(XENLOG_G_ERR "%s: teardown list is empty\n", __func__);
+        printk(XENLOG_ERR "%s: teardown list is empty\n", __func__);
 }
 
 /* This function is supposed to undo what ffa_domain_init() has done */
@@ -673,7 +674,7 @@ static bool ffa_probe_fw(void)
 
     if ( !ffa_get_version(&vers) )
     {
-        gprintk(XENLOG_ERR, "Cannot retrieve the FFA version\n");
+        printk(XENLOG_ERR "ffa: Cannot retrieve the FFA version\n");
         goto err_no_fw;
     }
 
@@ -713,7 +714,7 @@ static bool ffa_probe_fw(void)
             set_bit(FFA_ABI_BITNUM(ffa_fw_abi_needed[i].id),
                     ffa_fw_abi_supported);
         else
-            printk(XENLOG_INFO "ARM FF-A Firmware does not support %s\n",
+            printk(XENLOG_WARNING "ARM FF-A Firmware does not support %s\n",
                    ffa_fw_abi_needed[i].name);
     }
 

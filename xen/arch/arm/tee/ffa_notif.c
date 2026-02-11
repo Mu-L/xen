@@ -292,8 +292,9 @@ static void notif_vm_pend_intr(uint16_t vm_id)
             break;
         }
     }
-    if ( !v )
-        printk(XENLOG_ERR "ffa: can't inject NPI, all vCPUs offline\n");
+    if ( !v && printk_ratelimit() )
+        printk(XENLOG_G_DEBUG "%pd: ffa: can't inject NPI, all vCPUs offline\n",
+               d);
 
 out_unlock:
     rcu_unlock_domain(d);
@@ -316,9 +317,9 @@ static void notif_sri_action(void *unused)
         res = ffa_get_ret_code(&resp);
         if ( res )
         {
-            if ( res != FFA_RET_NO_DATA )
-                printk(XENLOG_ERR "ffa: notification info get failed: error %d\n",
-                       res);
+            if ( res != FFA_RET_NO_DATA && printk_ratelimit() )
+                printk(XENLOG_WARNING
+                       "ffa: notification info get failed: error %d\n", res);
             return;
         }
 
