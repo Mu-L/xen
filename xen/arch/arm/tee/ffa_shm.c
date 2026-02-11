@@ -512,6 +512,12 @@ void ffa_handle_mem_share(struct cpu_user_regs *regs)
     if ( ret )
         goto out_unlock;
 
+    if ( trans.mem_reg_attr & FFA_MEM_ATTR_NS )
+    {
+        ret = FFA_RET_INVALID_PARAMETERS;
+        goto out_unlock;
+    }
+
     if ( trans.mem_reg_attr != FFA_NORMAL_MEM_REG_ATTR )
     {
         ret = FFA_RET_NOT_SUPPORTED;
