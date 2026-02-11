@@ -274,6 +274,17 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
             ret = FFA_RET_NOT_SUPPORTED;
             goto out;
         }
+        /*
+         * The SPMC needs access to the VM TX buffer to relay SEND2.
+         * We only map VM RX/TX into the SPMC when RX_ACQUIRE is supported.
+         */
+        if ( !ffa_fw_supports_fid(FFA_RX_ACQUIRE) )
+        {
+            ret = FFA_RET_NOT_SUPPORTED;
+            gdprintk(XENLOG_DEBUG,
+                     "ffa: msg_send2 to SP requires RX_ACQUIRE\n");
+            goto out;
+        }
 
         ret = ffa_simple_call(FFA_MSG_SEND2,
                               ((uint32_t)ffa_get_vm_id(src_d)) << 16, 0, 0, 0);

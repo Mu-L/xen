@@ -281,7 +281,13 @@ static void handle_features(struct cpu_user_regs *regs)
             ffa_set_regs_error(regs, FFA_RET_NOT_SUPPORTED);
         break;
     case FFA_MSG_SEND2:
-        if ( ffa_fw_supports_fid(a1) || IS_ENABLED(CONFIG_FFA_VM_TO_VM) )
+        /*
+         * Forwarding SEND2 to an SP requires the SPMC to see the VM TX buffer.
+         * We only map VM RX/TX into the SPMC when RX_ACQUIRE is supported.
+         */
+        if ( IS_ENABLED(CONFIG_FFA_VM_TO_VM) ||
+             (ffa_fw_supports_fid(FFA_MSG_SEND2) &&
+              ffa_fw_supports_fid(FFA_RX_ACQUIRE)) )
             ffa_set_regs_success(regs, 0, 0);
         else
             ffa_set_regs_error(regs, FFA_RET_NOT_SUPPORTED);
