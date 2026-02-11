@@ -92,9 +92,11 @@ static int32_t ffa_get_sp_partinfo(struct ffa_uuid uuid, uint32_t *sp_count,
                                    uint32_t dst_size)
 {
     int32_t ret;
+    int32_t release_ret;
     uint32_t src_size, real_sp_count;
     void *src_buf;
     uint32_t count = 0;
+    bool notify_fw = false;
 
     /* We need to use the RX buffer to receive the list */
     src_buf = ffa_rxtx_spmc_rx_acquire();
@@ -104,6 +106,7 @@ static int32_t ffa_get_sp_partinfo(struct ffa_uuid uuid, uint32_t *sp_count,
     ret = ffa_partition_info_get(uuid, 0, &real_sp_count, &src_size);
     if ( ret )
         goto out;
+    notify_fw = true;
 
     /* Validate the src_size we got */
     if ( src_size < sizeof(struct ffa_partition_info_1_0) ||
@@ -157,7 +160,10 @@ static int32_t ffa_get_sp_partinfo(struct ffa_uuid uuid, uint32_t *sp_count,
     *sp_count = count;
 
 out:
-    ffa_rxtx_spmc_rx_release();
+    release_ret = ffa_rxtx_spmc_rx_release(notify_fw);
+    if ( release_ret )
+        gprintk(XENLOG_WARNING,
+                "ffa: Error releasing SPMC RX buffer: %d\n", release_ret);
     return ret;
 }
 
@@ -507,6 +513,7 @@ bool ffa_partinfo_init(void)
     int32_t e;
     void *spmc_rx;
     struct ffa_uuid nil_uuid = { .val = { 0ULL, 0ULL } };
+    bool notify_fw = false;
 
     if ( !ffa_fw_supports_fid(FFA_PARTITION_INFO_GET) ||
          !ffa_fw_supports_fid(FFA_MSG_SEND_DIRECT_REQ_32))
@@ -522,6 +529,7 @@ bool ffa_partinfo_init(void)
         printk(XENLOG_ERR "ffa: Failed to get list of SPs: %d\n", e);
         goto out;
     }
+    notify_fw = true;
 
     if ( count >= FFA_MAX_NUM_SP )
     {
@@ -533,7 +541,9 @@ bool ffa_partinfo_init(void)
     ret = init_subscribers(spmc_rx, count, fpi_size);
 
 out:
-    ffa_rxtx_spmc_rx_release();
+    e = ffa_rxtx_spmc_rx_release(notify_fw);
+    if ( e )
+        printk(XENLOG_WARNING "ffa: Error releasing SPMC RX buffer: %d\n", e);
     return ret;
 }
 

@@ -375,18 +375,22 @@ void *ffa_rxtx_spmc_rx_acquire(void)
     return NULL;
 }
 
-void ffa_rxtx_spmc_rx_release(void)
+int32_t ffa_rxtx_spmc_rx_release(bool notify_fw)
 {
     int32_t ret;
 
     ASSERT(spin_is_locked(&ffa_spmc_rx_lock));
 
-    /* Inform the SPMC that we are done with our RX buffer */
-    ret = ffa_simple_call(FFA_RX_RELEASE, 0, 0, 0, 0);
-    if ( ret != FFA_RET_OK )
-        printk(XENLOG_DEBUG "Error releasing SPMC RX buffer: %d\n", ret);
+    if ( notify_fw )
+    {
+        /* Inform the SPMC that we are done with our RX buffer */
+        ret = ffa_simple_call(FFA_RX_RELEASE, 0, 0, 0, 0);
+    }
+    else
+        ret = FFA_RET_OK;
 
     spin_unlock(&ffa_spmc_rx_lock);
+    return ret;
 }
 
 void *ffa_rxtx_spmc_tx_acquire(void)

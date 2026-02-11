@@ -459,7 +459,7 @@ int32_t ffa_endpoint_domain_lookup(uint16_t endpoint_id, struct domain **d_out,
 bool ffa_rxtx_spmc_init(void);
 void ffa_rxtx_spmc_destroy(void);
 void *ffa_rxtx_spmc_rx_acquire(void);
-void ffa_rxtx_spmc_rx_release(void);
+int32_t ffa_rxtx_spmc_rx_release(bool notify_fw);
 void *ffa_rxtx_spmc_tx_acquire(void);
 void ffa_rxtx_spmc_tx_release(void);
 
