@@ -161,32 +161,62 @@ static int32_t get_shm_pages(struct domain *d, struct ffa_shm_mem *shm,
         addr = ACCESS_ONCE(range[n].address);
 
         if ( !IS_ALIGNED(addr, FFA_PAGE_SIZE) )
+        {
+            gdprintk(XENLOG_DEBUG,
+                     "ffa: mem share pages invalid: unaligned range %u address %#lx\n",
+                     n, (unsigned long)addr);
             return FFA_RET_INVALID_PARAMETERS;
+        }
 
         for ( m = 0; m < page_count; m++ )
         {
             if ( pg_idx >= shm->page_count )
+            {
+                gdprintk(XENLOG_DEBUG,
+                         "ffa: mem share pages invalid: range overflow rg %u pg %u\n",
+                         n, m);
                 return FFA_RET_INVALID_PARAMETERS;
+            }
 
             if ( !ffa_safe_addr_add(addr, m) )
+            {
+                gdprintk(XENLOG_DEBUG,
+                         "ffa: mem share pages invalid: addr overflow rg %u pg %u base %#lx\n",
+                         n, m, (unsigned long)addr);
                 return FFA_RET_INVALID_PARAMETERS;
+            }
 
             gaddr = addr + m * FFA_PAGE_SIZE;
             gfn = gaddr_to_gfn(gaddr);
             shm->pages[pg_idx] = get_page_from_gfn(d, gfn_x(gfn), &t,
 						   P2M_ALLOC);
             if ( !shm->pages[pg_idx] )
+            {
+                gdprintk(XENLOG_DEBUG,
+                         "ffa: mem share pages invalid: gfn unmapped rg %u pg %u addr %#lx\n",
+                         n, m, (unsigned long)gaddr);
                 return FFA_RET_DENIED;
+            }
             /* Only normal RW RAM for now */
             if ( t != p2m_ram_rw )
+            {
+                gdprintk(XENLOG_DEBUG,
+                         "ffa: mem share pages invalid: p2m type %u rg %u pg %u addr %#lx\n",
+                         t, n, m, (unsigned long)gaddr);
                 return FFA_RET_DENIED;
+            }
             pg_idx++;
         }
     }
 
     /* The ranges must add up */
     if ( pg_idx < shm->page_count )
+    {
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: mem share pages invalid: range short pg %u\n",
+                 pg_idx);
         return FFA_RET_INVALID_PARAMETERS;
+    }
 
     return FFA_RET_OK;
 }
@@ -741,8 +771,10 @@ bool ffa_shm_domain_destroy(struct domain *d)
              * A temporary error that may get resolved a bit later, it's
              * worth retrying.
              */
-            printk(XENLOG_G_INFO "%pd: ffa: Failed to reclaim handle %#lx : %d\n",
-                   d, shm->handle, res);
+            if ( printk_ratelimit() )
+                printk(XENLOG_G_WARNING
+                       "%pd: ffa: Failed to reclaim handle %#lx : %d\n",
+                       d, shm->handle, res);
             break; /* We will retry later */
         default:
             /*
@@ -754,7 +786,8 @@ bool ffa_shm_domain_destroy(struct domain *d)
              * FFA_RET_NO_MEMORY might be a temporary error as it it could
              * succeed if retried later, but treat it as permanent for now.
              */
-            printk(XENLOG_G_INFO "%pd: ffa: Permanent failure to reclaim handle %#lx : %d\n",
+            printk(XENLOG_G_ERR
+                   "%pd: ffa: Permanent failure to reclaim handle %#lx : %d\n",
                    d, shm->handle, res);
 
             /*
