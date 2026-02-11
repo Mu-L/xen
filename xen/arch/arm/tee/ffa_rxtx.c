@@ -220,7 +220,7 @@ err_unlock_rxtx:
     return ret;
 }
 
-static int32_t rxtx_unmap(struct domain *d)
+static int32_t rxtx_unmap(struct domain *d, bool teardown)
 {
     struct ffa_ctx *ctx = d->arch.tee;
     int32_t ret = FFA_RET_OK;
@@ -232,6 +232,32 @@ static int32_t rxtx_unmap(struct domain *d)
     {
         ret = FFA_RET_INVALID_PARAMETERS;
         goto err_unlock_rxtx;
+    }
+
+    if ( !ctx->rx_is_free )
+    {
+        if ( teardown )
+        {
+            if ( ffa_fw_supports_fid(FFA_RX_ACQUIRE) )
+            {
+                int32_t rel_ret;
+
+                /* Can't use ffa_rx_release() while holding rx_lock. */
+                rel_ret = ffa_simple_call(FFA_RX_RELEASE, ctx->ffa_id,
+                                          0, 0, 0);
+                if ( rel_ret )
+                    gdprintk(XENLOG_DEBUG,
+                             "ffa: RX release during teardown failed: %d\n",
+                             rel_ret);
+            }
+        }
+        else
+        {
+            gdprintk(XENLOG_DEBUG,
+                     "ffa: RXTX_UNMAP denied, RX buffer owned by VM\n");
+            ret = FFA_RET_DENIED;
+            goto err_unlock_rxtx;
+        }
     }
 
     if ( ffa_fw_supports_fid(FFA_RX_ACQUIRE) )
@@ -261,7 +287,7 @@ err_unlock_rxtx:
 
 int32_t ffa_handle_rxtx_unmap(void)
 {
-    return rxtx_unmap(current->domain);
+    return rxtx_unmap(current->domain, false);
 }
 
 int32_t ffa_rx_acquire(struct ffa_ctx *ctx, void **buf, size_t *buf_size)
@@ -369,7 +395,7 @@ int32_t ffa_rxtx_domain_init(struct domain *d)
 
 void ffa_rxtx_domain_destroy(struct domain *d)
 {
-    rxtx_unmap(d);
+    rxtx_unmap(d, true /* teardown */);
 }
 
 void *ffa_rxtx_spmc_rx_acquire(void)
