@@ -4,6 +4,7 @@
  */
 
 #include <xen/const.h>
+#include <xen/lib.h>
 #include <xen/sizes.h>
 #include <xen/types.h>
 
@@ -100,6 +101,7 @@ void ffa_handle_msg_send_direct_req(struct cpu_user_regs *regs, uint32_t fid)
     if ( !ffa_fw_supports_fid(fid) )
     {
         ret = FFA_RET_NOT_SUPPORTED;
+        gdprintk(XENLOG_DEBUG, "ffa: direct req fid %#x not supported\n", fid);
         goto out;
     }
 
@@ -108,6 +110,9 @@ void ffa_handle_msg_send_direct_req(struct cpu_user_regs *regs, uint32_t fid)
          (src_dst & GENMASK(15,0)) == ffa_get_vm_id(d) )
     {
         ret = FFA_RET_INVALID_PARAMETERS;
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: direct req invalid src/dst %#x\n",
+                 (uint32_t)src_dst);
         goto out;
     }
 
@@ -115,6 +120,9 @@ void ffa_handle_msg_send_direct_req(struct cpu_user_regs *regs, uint32_t fid)
     if ( !FFA_ID_IS_SECURE(src_dst & GENMASK(15,0)) )
     {
         ret = FFA_RET_NOT_SUPPORTED;
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: direct req to non-secure dst %#x\n",
+                 (uint32_t)(src_dst & GENMASK(15, 0)));
         goto out;
     }
 
@@ -166,7 +174,12 @@ static int32_t ffa_msg_send2_vm(uint16_t dst_id, const void *src_buf,
     /* This is also checking that dest is not src */
     ret = ffa_endpoint_domain_lookup(dst_id, &dst_d, &dst_ctx);
     if ( ret )
+    {
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: msg_send2 lookup failed: dst %#x ret %d\n",
+                 dst_id, ret);
         return ret;
+    }
 
     /* This also checks that destination has set a Rx buffer */
     ret = ffa_rx_acquire(dst_ctx , &rx_buf, &rx_size);
@@ -199,6 +212,16 @@ static int32_t ffa_msg_send2_vm(uint16_t dst_id, const void *src_buf,
     /* receiver rx buffer will be released by the receiver*/
 
 out_unlock:
+    if ( ret )
+    {
+        /**
+         * Always print other errors than BUSY but ratelimit BUSY prints
+         * to prevent large number of prints when sender retries on BUSY.
+         */
+        if ( ret != FFA_RET_BUSY || printk_ratelimit() )
+            gdprintk(XENLOG_DEBUG, "ffa: msg_send2 to %#x failed: %d\n",
+                     dst_id, ret);
+    }
     rcu_unlock_domain(dst_d);
     if ( !ret )
         ffa_raise_rx_buffer_full(dst_d);
@@ -226,7 +249,11 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
 
     ret = ffa_tx_acquire(src_ctx, &tx_buf, &tx_size);
     if ( ret != FFA_RET_OK )
+    {
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: msg_send2 TX acquire failed: %d\n", ret);
         return ret;
+    }
 
     /* create a copy of the message header */
     memcpy(&src_msg, tx_buf, sizeof(src_msg));
@@ -238,6 +265,9 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
          dst_id == ffa_get_vm_id(src_d) )
     {
         ret = FFA_RET_INVALID_PARAMETERS;
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: msg_send2 invalid src/dst src %#x dst %#x\n",
+                 src_id, dst_id);
         goto out;
     }
 
@@ -246,6 +276,9 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
         if (src_msg.msg_offset < sizeof(struct ffa_part_msg_rxtx_1_1))
         {
             ret = FFA_RET_INVALID_PARAMETERS;
+            gdprintk(XENLOG_DEBUG,
+                     "ffa: msg_send2 invalid msg_offset %u (v1.1)\n",
+                     src_msg.msg_offset);
             goto out;
         }
         /* Set uuid to Nil UUID for v1.1 guests */
@@ -255,6 +288,9 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
     else if ( src_msg.msg_offset < sizeof(struct ffa_part_msg_rxtx_1_2) )
     {
         ret = FFA_RET_INVALID_PARAMETERS;
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: msg_send2 invalid msg_offset %u (v1.2)\n",
+                 src_msg.msg_offset);
         goto out;
     }
 
@@ -263,6 +299,9 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
             src_msg.msg_size > (tx_size - src_msg.msg_offset) )
     {
         ret = FFA_RET_INVALID_PARAMETERS;
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: msg_send2 invalid msg_size %u offset %u tx %zu\n",
+                 src_msg.msg_size, src_msg.msg_offset, tx_size);
         goto out;
     }
 
@@ -272,6 +311,8 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
         if ( !ffa_fw_supports_fid(FFA_MSG_SEND2) )
         {
             ret = FFA_RET_NOT_SUPPORTED;
+            gdprintk(XENLOG_DEBUG,
+                     "ffa: msg_send2 to SP not supported\n");
             goto out;
         }
         /*
@@ -288,6 +329,8 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
 
         ret = ffa_simple_call(FFA_MSG_SEND2,
                               ((uint32_t)ffa_get_vm_id(src_d)) << 16, 0, 0, 0);
+        if ( ret )
+            gdprintk(XENLOG_DEBUG, "ffa: msg_send2 to SP failed: %d\n", ret);
     }
     else if ( IS_ENABLED(CONFIG_FFA_VM_TO_VM) )
     {
@@ -295,7 +338,11 @@ int32_t ffa_handle_msg_send2(struct cpu_user_regs *regs)
         ret = ffa_msg_send2_vm(dst_id, tx_buf, &src_msg);
     }
     else
+    {
         ret = FFA_RET_INVALID_PARAMETERS;
+        gdprintk(XENLOG_DEBUG,
+                 "ffa: msg_send2 to VM disabled (dst %#x)\n", dst_id);
+    }
 
 out:
     ffa_tx_release(src_ctx);
@@ -311,6 +358,7 @@ void ffa_handle_run(struct cpu_user_regs *regs, uint32_t fid)
     if ( !ffa_fw_supports_fid(fid) )
     {
         ret = FFA_RET_NOT_SUPPORTED;
+        gdprintk(XENLOG_DEBUG, "ffa: run fid %#x not supported\n", fid);
         goto out;
     }
 
@@ -322,6 +370,7 @@ void ffa_handle_run(struct cpu_user_regs *regs, uint32_t fid)
     if ( !FFA_ID_IS_SECURE(dst >> 16) )
     {
         ret = FFA_RET_NOT_SUPPORTED;
+        gdprintk(XENLOG_DEBUG, "ffa: run to non-secure dst %#x\n", dst);
         goto out;
     }
 
