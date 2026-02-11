@@ -91,10 +91,10 @@ static const struct ffa_fw_abi ffa_fw_abi_needed[] = {
     FW_ABI(FFA_PARTITION_INFO_GET),
     FW_ABI(FFA_NOTIFICATION_INFO_GET_64),
     FW_ABI(FFA_NOTIFICATION_GET),
+    FW_ABI(FFA_RX_ACQUIRE),
     FW_ABI(FFA_RX_RELEASE),
     FW_ABI(FFA_RXTX_MAP_64),
     FW_ABI(FFA_RXTX_UNMAP),
-    FW_ABI(FFA_MEM_SHARE_32),
     FW_ABI(FFA_MEM_SHARE_64),
     FW_ABI(FFA_MEM_RECLAIM),
     FW_ABI(FFA_MSG_SEND_DIRECT_REQ_32),
@@ -238,21 +238,30 @@ static void handle_features(struct cpu_user_regs *regs)
     uint32_t a1 = get_user_reg(regs, 1);
     struct domain *d = current->domain;
     struct ffa_ctx *ctx = d->arch.tee;
-    unsigned int n;
 
-    for ( n = 2; n <= 7; n++ )
+    /*
+     * FFA_FEATURES defines w2 as input properties only for specific
+     * function IDs and reserves w3-w7 as SBZ. Xen does not currently
+     * implement any feature that consumes w2, so ignore extra inputs.
+     */
+    if ( !is_64bit_domain(d) && smccc_is_conv_64(a1) )
     {
-        if ( get_user_reg(regs, n) )
-        {
-            ffa_set_regs_error(regs, FFA_RET_NOT_SUPPORTED);
-            return;
-        }
+        /* 32bit guests should only use 32bit convention calls */
+        ffa_set_regs_error(regs, FFA_RET_NOT_SUPPORTED);
+        return;
     }
 
     switch ( a1 )
     {
+    case FFA_NOTIFICATION_BITMAP_CREATE:
+    case FFA_NOTIFICATION_BITMAP_DESTROY:
+    case FFA_RX_ACQUIRE:
+        /* Physical-instance-only ABIs are not exposed to VMs. */
+        ffa_set_regs_error(regs, FFA_RET_NOT_SUPPORTED);
+        break;
     case FFA_ERROR:
     case FFA_VERSION:
+    case FFA_INTERRUPT:
     case FFA_SUCCESS_32:
     case FFA_SUCCESS_64:
     case FFA_FEATURES:
@@ -261,16 +270,25 @@ static void handle_features(struct cpu_user_regs *regs)
     case FFA_RXTX_UNMAP:
     case FFA_MEM_RECLAIM:
     case FFA_PARTITION_INFO_GET:
-    case FFA_MSG_SEND_DIRECT_REQ_32:
-    case FFA_MSG_SEND_DIRECT_REQ_64:
-    case FFA_MSG_SEND2:
-    case FFA_RUN:
-    case FFA_INTERRUPT:
-    case FFA_MSG_YIELD:
         ffa_set_regs_success(regs, 0, 0);
         break;
+    case FFA_MSG_SEND_DIRECT_REQ_32:
+    case FFA_MSG_SEND_DIRECT_REQ_64:
+    case FFA_RUN:
+        if ( ffa_fw_supports_fid(a1) )
+            ffa_set_regs_success(regs, 0, 0);
+        else
+            ffa_set_regs_error(regs, FFA_RET_NOT_SUPPORTED);
+        break;
+    case FFA_MSG_SEND2:
+        if ( ffa_fw_supports_fid(a1) || IS_ENABLED(CONFIG_FFA_VM_TO_VM) )
+            ffa_set_regs_success(regs, 0, 0);
+        else
+            ffa_set_regs_error(regs, FFA_RET_NOT_SUPPORTED);
+        break;
     case FFA_MSG_SEND_DIRECT_REQ2:
-        if ( ACCESS_ONCE(ctx->guest_vers) >= FFA_VERSION_1_2 )
+        if ( ACCESS_ONCE(ctx->guest_vers) >= FFA_VERSION_1_2 &&
+             ffa_fw_supports_fid(FFA_MSG_SEND_DIRECT_REQ2) )
         {
             ffa_set_regs_success(regs, 0, 0);
         }
@@ -281,6 +299,11 @@ static void handle_features(struct cpu_user_regs *regs)
         break;
     case FFA_MEM_SHARE_64:
     case FFA_MEM_SHARE_32:
+        if ( !ffa_fw_supports_fid(FFA_MEM_SHARE_64) )
+        {
+            ffa_set_regs_error(regs, FFA_RET_NOT_SUPPORTED);
+            break;
+        }
         /*
          * We currently don't support dynamically allocated buffers. Report
          * that with 0 in bit[0] of w2.
@@ -686,6 +709,20 @@ static bool ffa_probe_fw(void)
         else
             printk(XENLOG_INFO "ARM FF-A Firmware does not support %s\n",
                    ffa_fw_abi_needed[i].name);
+    }
+
+    /*
+     * Hafnium v2.14 or earlier does not report FFA_RX_ACQUIRE in
+     * FFA_FEATURES even though it supports it.
+     */
+    if ( !ffa_fw_supports_fid(FFA_RX_ACQUIRE) &&
+         ffa_fw_supports_fid(FFA_MSG_SEND2) )
+    {
+        printk(XENLOG_WARNING
+               "ARM FF-A Firmware reports FFA_MSG_SEND2 without FFA_RX_ACQUIRE\n");
+        printk(XENLOG_WARNING
+               "ffa: assuming RX_ACQUIRE support (workaround)\n");
+        set_bit(FFA_ABI_BITNUM(FFA_RX_ACQUIRE), ffa_fw_abi_supported);
     }
 
     if ( !ffa_rxtx_spmc_init() )
