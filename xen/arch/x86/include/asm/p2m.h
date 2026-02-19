@@ -1066,7 +1066,7 @@ static inline int p2m_entry_modify(struct p2m_domain *p2m, p2m_type_t nt,
         if ( !mfn_valid(nfn) || p2m != p2m_get_hostp2m(p2m->domain) )
         {
             ASSERT_UNREACHABLE();
-            return -EINVAL;
+            return -EILSEQ;
         }
 
         if ( !page_get_owner_and_reference(mfn_to_page(nfn)) )
@@ -1088,14 +1088,26 @@ static inline int p2m_entry_modify(struct p2m_domain *p2m, p2m_type_t nt,
         break;
 
     case p2m_map_foreign:
-        if ( !mfn_valid(ofn) || p2m != p2m_get_hostp2m(p2m->domain) )
+    {
+        struct page_info *pg = mfn_valid(ofn) ? mfn_to_page(ofn) : NULL;
+        unsigned long ci = pg ? ACCESS_ONCE(pg->count_info) : 0;
+
+        if ( !pg || p2m != p2m_get_hostp2m(p2m->domain) ||
+             /*
+              * Rely on the caller also holding a reference to the page, so
+              * that the put_page() below doesn't cause the page to be
+              * freed, as it still has to be removed from the p2m.
+              */
+             (ci & PGC_count_mask) <= (ci & PGC_allocated ? 2 : 1) ||
+             !p2m->nr_foreign )
         {
             ASSERT_UNREACHABLE();
-            return -EINVAL;
+            return -EILSEQ;
         }
-        put_page(mfn_to_page(ofn));
+        put_page(pg);
         p2m->nr_foreign--;
         break;
+    }
 
     default:
         break;
