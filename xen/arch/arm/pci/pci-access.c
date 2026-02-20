@@ -63,6 +63,7 @@ int pci_generic_config_read(struct pci_host_bridge *bridge, pci_sbdf_t sbdf,
         break;
     default:
         ASSERT_UNREACHABLE();
+        break;
     }
 
     return 0;
@@ -89,6 +90,7 @@ int pci_generic_config_write(struct pci_host_bridge *bridge, pci_sbdf_t sbdf,
         break;
     default:
         ASSERT_UNREACHABLE();
+        break;
     }
 
     return 0;

@@ -1213,7 +1213,7 @@ void sh_destroy_shadow(struct domain *d, mfn_t smfn)
 #ifdef CONFIG_PV32
     case SH_type_l2h_64_shadow:
         ASSERT(is_pv_32bit_domain(d));
-        /* Fall through... */
+        fallthrough;
 #endif
     case SH_type_l2_64_shadow:
         SHADOW_INTERNAL_NAME(sh_destroy_l2_shadow, 4)(d, smfn);

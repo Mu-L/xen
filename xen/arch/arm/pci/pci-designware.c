@@ -48,6 +48,7 @@ static int dw_pcie_read(void __iomem *addr, unsigned int len, uint32_t *val)
         break;
     default:
         ASSERT_UNREACHABLE();
+        break;
     }
 
     return 0;
@@ -71,6 +72,7 @@ static int dw_pcie_write(void __iomem *addr, unsigned int len, uint32_t val)
         break;
     default:
         ASSERT_UNREACHABLE();
+        break;
     }
 
     return 0;

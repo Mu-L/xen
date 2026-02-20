@@ -1206,6 +1206,7 @@ static void do_call_with_arg(struct optee_domain *ctx,
     default:
         /* Free any temporary shared buffers */
         free_shm_buffers(ctx, call->xen_arg);
+        break;
     }
 
     put_std_call(ctx, call);
