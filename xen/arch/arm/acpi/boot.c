@@ -264,14 +264,14 @@ int __init acpi_boot_table_init(void)
     if ( error )
     {
         printk("%s: Unable to initialize table parser (%d)\n",
-               __FUNCTION__, error);
+               __func__, error);
         goto disable;
     }
 
     error = acpi_table_parse(ACPI_SIG_FADT, acpi_parse_fadt);
     if ( error )
     {
-        printk("%s: FADT not found (%d)\n", __FUNCTION__, error);
+        printk("%s: FADT not found (%d)\n", __func__, error);
         goto disable;
     }
 
