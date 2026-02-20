@@ -285,7 +285,7 @@ void __iomem *dw_pcie_child_map_bus(struct pci_host_bridge *bridge,
                                     bridge->child_cfg->phys_addr, busdev,
                                     bridge->child_cfg->size);
     if ( ret )
-        return 0;
+        return NULL;
 
     return bridge->child_cfg->win + where;
 }

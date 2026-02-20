@@ -6,12 +6,11 @@
  * Based on xen/arch/arm/pci/pci-host-generic.c
  */
 
-#include <xen/pci.h>
-#include <xen/init.h>
-
 #ifndef __PCI_DESIGNWARE_H__
 #define __PCI_DESIGNWARE_H__
 
+#include <xen/pci.h>
+#include <xen/init.h>
 
 #define PCIE_ATU_VIEWPORT               0x900
 #define PCIE_ATU_REGION_OUTBOUND        0
