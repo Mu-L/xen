@@ -79,6 +79,8 @@ const char *const fetch_type_names[] = {
 # define for_each_shadow_table(v, i) for ( (i) = 0; (i) < 1; ++(i) )
 #endif
 
+static pagetable_t cf_check sh_update_cr3(struct vcpu *v, bool noflush);
+
 /* Helper to perform a local TLB flush. */
 static void sh_flush_local(const struct domain *d)
 {
@@ -2478,7 +2480,7 @@ static int cf_check sh_page_fault(
          * In any case, in the PAE case, the ASSERT is not true; it can
          * happen because of actions the guest is taking. */
 #if GUEST_PAGING_LEVELS == 3
-        v->arch.paging.mode->update_cr3(v, false);
+        sh_update_cr3(v, false);
 #else
         ASSERT(d->is_shutting_down);
 #endif
