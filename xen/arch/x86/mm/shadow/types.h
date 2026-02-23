@@ -262,7 +262,7 @@ int shadow_set_l4e(struct domain *d, shadow_l4e_t *sl4e,
 static void inline
 shadow_put_page_from_l1e(shadow_l1e_t sl1e, struct domain *d)
 {
-    if ( !shadow_mode_refcounts(d) )
+    if ( !paging_mode_refcounts(d) )
         return;
 
     put_page_from_l1e(sl1e, d);

@@ -1276,7 +1276,7 @@ int sh_remove_write_access(struct domain *d, mfn_t gmfn,
      * In guest refcounting, we trust Xen to already be restricting
      * all the writes to the guest page tables, so we do not need to
      * do more. */
-    if ( !shadow_mode_refcounts(d) )
+    if ( !paging_mode_refcounts(d) )
         return 0;
 
     /* Early exit if it's already a pagetable, or otherwise not writeable */
@@ -1508,7 +1508,7 @@ int sh_remove_all_mappings(struct domain *d, mfn_t gmfn, gfn_t gfn)
          *   guest pages with an extra reference taken by
          *   prepare_ring_for_helper().
          */
-        if ( !(shadow_mode_external(d)
+        if ( !(paging_mode_external(d)
                && (page->count_info & PGC_count_mask) <= 3
                && ((page->u.inuse.type_info & PGT_count_mask)
                    == (is_special_page(page) ||
@@ -1806,8 +1806,8 @@ static void sh_update_paging_modes(struct vcpu *v)
     {
         const struct paging_mode *old_mode = v->arch.paging.mode;
 
-        ASSERT(shadow_mode_translate(d));
-        ASSERT(shadow_mode_external(d));
+        ASSERT(paging_mode_translate(d));
+        ASSERT(paging_mode_external(d));
 
 #if (SHADOW_OPTIMIZATIONS & SHOPT_OUT_OF_SYNC)
         /* Need to resync all our pages now, because if a page goes out
@@ -2211,7 +2211,7 @@ void shadow_vcpu_teardown(struct vcpu *v)
 
     sh_detach_old_tables(v);
 #ifdef CONFIG_HVM
-    if ( shadow_mode_external(d) )
+    if ( paging_mode_external(d) )
     {
         mfn_t mfn = pagetable_get_mfn(v->arch.hvm.monitor_table);
 

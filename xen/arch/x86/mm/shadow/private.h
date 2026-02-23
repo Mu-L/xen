@@ -399,7 +399,7 @@ static inline int sh_remove_write_access(struct domain *d, mfn_t gmfn,
                                          unsigned int level,
                                          unsigned long fault_addr)
 {
-    ASSERT(!shadow_mode_refcounts(d));
+    ASSERT(!paging_mode_refcounts(d));
     return 0;
 }
 #endif
@@ -523,8 +523,8 @@ sh_mfn_is_a_page_table(mfn_t gmfn)
 
     page = mfn_to_page(gmfn);
     owner = page_get_owner(page);
-    if ( owner && shadow_mode_refcounts(owner)
-         && (page->count_info & PGC_shadowed_pt) )
+    if ( owner && paging_mode_refcounts(owner) &&
+         (page->count_info & PGC_shadowed_pt) )
         return 1;
 
     type_info = page->u.inuse.type_info & PGT_type_mask;

@@ -81,7 +81,7 @@ shadow_get_page_from_l1e(shadow_l1e_t sl1e, struct domain *d, p2m_type_t type)
     struct domain *owner = NULL;
 
     ASSERT(!sh_l1e_is_magic(sl1e));
-    ASSERT(shadow_mode_refcounts(d));
+    ASSERT(paging_mode_refcounts(d));
 
     if ( mfn_valid(mfn) )
     {
@@ -342,7 +342,7 @@ int shadow_set_l1e(struct domain *d, shadow_l1e_t *sl1e,
          !sh_l1e_is_magic(new_sl1e) )
     {
         /* About to install a new reference */
-        if ( shadow_mode_refcounts(d) )
+        if ( paging_mode_refcounts(d) )
         {
 #define PAGE_FLIPPABLE (_PAGE_RW | _PAGE_PWT | _PAGE_PCD | _PAGE_PAT)
             int rc;
@@ -375,7 +375,7 @@ int shadow_set_l1e(struct domain *d, shadow_l1e_t *sl1e,
 
     old_sl1f = shadow_l1e_get_flags(old_sl1e);
     if ( (old_sl1f & _PAGE_PRESENT) && !sh_l1e_is_magic(old_sl1e) &&
-         shadow_mode_refcounts(d) )
+         paging_mode_refcounts(d) )
     {
         /*
          * We lost a reference to an old mfn.

@@ -519,7 +519,7 @@ _sh_propagate(struct vcpu *v,
                || (level == 1
                    && page_get_owner(mfn_to_page(target_mfn)) == dom_io);
     if ( mmio_mfn
-         && !(level == 1 && (!shadow_mode_refcounts(d)
+         && !(level == 1 && (!paging_mode_refcounts(d)
                              || p2mt == p2m_mmio_direct)) )
     {
         ASSERT((ft == ft_prefetch));
@@ -536,7 +536,7 @@ _sh_propagate(struct vcpu *v,
                        _PAGE_RW | _PAGE_PRESENT);
     if ( guest_nx_enabled(v) )
         pass_thru_flags |= _PAGE_NX_BIT;
-    if ( level == 1 && !shadow_mode_refcounts(d) && mmio_mfn )
+    if ( level == 1 && !paging_mode_refcounts(d) && mmio_mfn )
         pass_thru_flags |= PAGE_CACHE_ATTRS;
     sflags = gflags & pass_thru_flags;
 
@@ -656,7 +656,7 @@ _sh_propagate(struct vcpu *v,
      * (We handle log-dirty entirely inside the shadow code, without using the
      * p2m_ram_logdirty p2m type: only HAP uses that.)
      */
-    if ( level == 1 && unlikely(shadow_mode_log_dirty(d)) && !mmio_mfn )
+    if ( level == 1 && unlikely(paging_mode_log_dirty(d)) && !mmio_mfn )
     {
         if ( ft & FETCH_TYPE_WRITE )
             paging_mark_dirty(d, target_mfn);
@@ -812,7 +812,7 @@ do {                                                                    \
 #define FOREACH_PRESENT_L2E(_sl2mfn, _sl2e, _gl2p, _done, _dom, _code)    \
 do {                                                                      \
     int _i, _j;                                                           \
-    ASSERT(shadow_mode_external(_dom));                                   \
+    ASSERT(paging_mode_external(_dom));                                   \
     ASSERT(mfn_to_page(_sl2mfn)->u.sh.type == SH_type_l2_32_shadow);      \
     for ( _j = 0; _j < 4; _j++ )                                          \
     {                                                                     \
@@ -838,7 +838,7 @@ do {                                                                      \
 do {                                                                       \
     int _i;                                                                \
     shadow_l2e_t *_sp = map_domain_page((_sl2mfn));                        \
-    ASSERT(shadow_mode_external(_dom));                                    \
+    ASSERT(paging_mode_external(_dom));                                    \
     ASSERT(mfn_to_page(_sl2mfn)->u.sh.type == SH_type_l2_pae_shadow);      \
     for ( _i = 0; _i < SHADOW_L2_PAGETABLE_ENTRIES; _i++ )                 \
     {                                                                      \
@@ -859,7 +859,7 @@ do {                                                                        \
     unsigned int _i, _end = SHADOW_L2_PAGETABLE_ENTRIES;                    \
     shadow_l2e_t *_sp = map_domain_page((_sl2mfn));                         \
     ASSERT_VALID_L2(mfn_to_page(_sl2mfn)->u.sh.type);                       \
-    if ( is_pv_32bit_domain(_dom) /* implies !shadow_mode_external */ &&    \
+    if ( is_pv_32bit_domain(_dom) /* implies !paging_mode_external */ &&    \
          mfn_to_page(_sl2mfn)->u.sh.type != SH_type_l2_64_shadow )          \
         _end = COMPAT_L2_PAGETABLE_FIRST_XEN_SLOT(_dom);                    \
     for ( _i = 0; _i < _end; ++_i )                                         \
@@ -901,7 +901,7 @@ do {                                                                    \
 #define FOREACH_PRESENT_L4E(_sl4mfn, _sl4e, _gl4p, _done, _dom, _code)  \
 do {                                                                    \
     shadow_l4e_t *_sp = map_domain_page((_sl4mfn));                     \
-    int _xen = !shadow_mode_external(_dom);                             \
+    int _xen = !paging_mode_external(_dom);                             \
     int _i;                                                             \
     ASSERT(mfn_to_page(_sl4mfn)->u.sh.type == SH_type_l4_64_shadow);\
     for ( _i = 0; _i < SHADOW_L4_PAGETABLE_ENTRIES; _i++ )              \
@@ -970,7 +970,7 @@ sh_make_shadow(struct vcpu *v, mfn_t gmfn, u32 shadow_type)
 #endif
 
     // Create the Xen mappings...
-    if ( !shadow_mode_external(d) )
+    if ( !paging_mode_external(d) )
     {
         switch (shadow_type)
         {
@@ -1372,7 +1372,7 @@ void sh_destroy_l1_shadow(struct domain *d, mfn_t smfn)
         shadow_demote(d, gmfn, t);
     }
 
-    if ( shadow_mode_refcounts(d) )
+    if ( paging_mode_refcounts(d) )
     {
         /* Decrement refcounts of all the old entries */
         mfn_t sl1mfn = smfn;
@@ -1469,7 +1469,7 @@ static int cf_check validate_gl4e(
     l4e_propagate_from_guest(v, new_gl4e, sl3mfn, &new_sl4e, ft_prefetch);
 
     // check for updates to xen reserved slots
-    if ( !shadow_mode_external(d) )
+    if ( !paging_mode_external(d) )
     {
         int shadow_index = (((unsigned long)sl4p & ~PAGE_MASK) /
                             sizeof(shadow_l4e_t));
@@ -2390,7 +2390,7 @@ static int cf_check sh_page_fault(
      * present entry) we'd get back right here immediately afterwards, thus
      * preventing the guest from making further forward progress.
      */
-    if ( shadow_mode_refcounts(d) &&
+    if ( paging_mode_refcounts(d) &&
          !p2m_is_mmio(p2mt) &&
          (!p2m_is_any_ram(p2mt) || !mfn_valid(gmfn)) )
     {
@@ -2614,7 +2614,7 @@ static int cf_check sh_page_fault(
     return EXCRET_fault_fixed;
 
  emulate:
-    if ( !shadow_mode_refcounts(d) )
+    if ( !paging_mode_refcounts(d) )
         goto not_a_shadow_fault;
 
 #ifdef CONFIG_HVM
@@ -3063,7 +3063,7 @@ sh_update_linear_entries(struct vcpu *v)
      */
 
     /* Don't try to update the monitor table if it doesn't exist */
-    if ( !shadow_mode_external(d) ||
+    if ( !paging_mode_external(d) ||
          pagetable_get_pfn(v->arch.hvm.monitor_table) == 0 )
         return;
 
@@ -3214,7 +3214,7 @@ static pagetable_t cf_check sh_update_cr3(struct vcpu *v, bool noflush)
     /* Double-check that the HVM code has sent us a sane guest_table */
     if ( is_hvm_domain(d) )
     {
-        ASSERT(shadow_mode_external(d));
+        ASSERT(paging_mode_external(d));
         if ( hvm_paging_enabled(v) )
             ASSERT(pagetable_get_pfn(v->arch.guest_table));
         else
@@ -3239,7 +3239,7 @@ static pagetable_t cf_check sh_update_cr3(struct vcpu *v, bool noflush)
      * table.  We cache the current state of that table and shadow that,
      * until the next CR3 write makes us refresh our cache.
      */
-    ASSERT(shadow_mode_external(d));
+    ASSERT(paging_mode_external(d));
 
     /*
      * Find where in the page the l3 table is, but ignore the low 2 bits of
@@ -3271,7 +3271,7 @@ static pagetable_t cf_check sh_update_cr3(struct vcpu *v, bool noflush)
         ASSERT(d->is_dying || d->is_shutting_down);
         return old_entry;
     }
-    if ( !shadow_mode_external(d) && !is_pv_32bit_domain(d) )
+    if ( !paging_mode_external(d) && !is_pv_32bit_domain(d) )
     {
         mfn_t smfn = pagetable_get_mfn(v->arch.paging.shadow.shadow_table[0]);
 
@@ -3371,7 +3371,7 @@ static pagetable_t cf_check sh_update_cr3(struct vcpu *v, bool noflush)
     ///
     /// v->arch.cr3
     ///
-    if ( shadow_mode_external(d) )
+    if ( paging_mode_external(d) )
     {
         make_cr3(v, pagetable_get_mfn(v->arch.hvm.monitor_table));
     }
@@ -3388,7 +3388,7 @@ static pagetable_t cf_check sh_update_cr3(struct vcpu *v, bool noflush)
     ///
     /// v->arch.hvm.hw_cr[3]
     ///
-    if ( shadow_mode_external(d) )
+    if ( paging_mode_external(d) )
     {
         ASSERT(is_hvm_domain(d));
 #if SHADOW_PAGING_LEVELS == 3
