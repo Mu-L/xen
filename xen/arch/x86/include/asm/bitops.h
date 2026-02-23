@@ -343,7 +343,7 @@ static always_inline unsigned int __scanbit(unsigned long val, unsigned int max)
     if ( o__ >= s__ )                                                       \
         r__ = s__;                                                          \
     else if ( __builtin_constant_p(size) && s__ <= BITS_PER_LONG )          \
-        r__ = o__ + __scanbit(*(const unsigned long *)(a__) >> o__, s__);   \
+        r__ = o__ + __scanbit(*a__ >> o__, s__);                            \
     else if ( __builtin_constant_p(off) && !o__ )                           \
         r__ = __find_first_bit(a__, s__);                                   \
     else                                                                    \
@@ -375,7 +375,7 @@ static always_inline unsigned int __scanbit(unsigned long val, unsigned int max)
     if ( o__ >= s__ )                                                       \
         r__ = s__;                                                          \
     else if ( __builtin_constant_p(size) && s__ <= BITS_PER_LONG )          \
-        r__ = o__ + __scanbit(~*(const unsigned long *)(a__) >> o__, s__);  \
+        r__ = o__ + __scanbit(~*a__ >> o__, s__);                           \
     else if ( __builtin_constant_p(off) && !o__ )                           \
         r__ = __find_first_zero_bit(a__, s__);                              \
     else                                                                    \
