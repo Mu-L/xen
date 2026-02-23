@@ -397,7 +397,7 @@ static inline mfn_t cf_check sh_next_page(mfn_t smfn)
     shadow_set_l2e(d, sl2e, new_sl2e, sl2mfn, SH_type_fl1_shadow, sh_next_page)
 
 static inline u32
-guest_index(void *ptr)
+guest_index(const void *ptr)
 {
     return (u32)((unsigned long)ptr & ~PAGE_MASK) / sizeof(guest_l1e_t);
 }
@@ -3551,16 +3551,25 @@ static int cf_check sh_guess_wrmap(
 }
 #endif
 
+/* Remember the last shadow that we shot a writeable mapping in */
+static always_inline void store_last_writeable_pte_smfn(
+    const struct domain *d, mfn_t sl1mfn)
+{
+#if SHADOW_OPTIMIZATIONS & SHOPT_WRITABLE_HEURISTIC
+    struct vcpu *curr = current;
+
+    if ( curr->domain == d )
+        curr->arch.paging.shadow.last_writeable_pte_smfn = mfn_x(sl1mfn);
+#endif
+}
+
 int cf_check sh_rm_write_access_from_l1(
     struct domain *d, mfn_t sl1mfn, mfn_t readonly_mfn)
 /* Excises all writeable mappings to readonly_mfn from this l1 shadow table */
 {
     shadow_l1e_t *sl1e;
     int done = 0;
-#if SHADOW_OPTIMIZATIONS & SHOPT_WRITABLE_HEURISTIC
-    struct vcpu *curr = current;
     mfn_t base_sl1mfn = sl1mfn; /* Because sl1mfn changes in the foreach */
-#endif
 
     FOREACH_PRESENT_L1E(sl1mfn, sl1e, NULL, done,
     {
@@ -3570,11 +3579,9 @@ int cf_check sh_rm_write_access_from_l1(
             shadow_l1e_t ro_sl1e = shadow_l1e_remove_flags(*sl1e, _PAGE_RW);
 
             shadow_set_l1e(d, sl1e, ro_sl1e, p2m_ram_rw, sl1mfn);
-#if SHADOW_OPTIMIZATIONS & SHOPT_WRITABLE_HEURISTIC
-            /* Remember the last shadow that we shot a writeable mapping in */
-            if ( curr->domain == d )
-                curr->arch.paging.shadow.last_writeable_pte_smfn = mfn_x(base_sl1mfn);
-#endif
+
+            store_last_writeable_pte_smfn(d, base_sl1mfn);
+
             if ( (mfn_to_page(readonly_mfn)->u.inuse.type_info
                   & PGT_count_mask) == 0 )
                 /* This breaks us cleanly out of the FOREACH macro */
@@ -3884,12 +3891,36 @@ static const char *sh_audit_flags(const struct domain *d, int level,
     return NULL;
 }
 
+static always_inline bool audit_magic(
+    const guest_l1e_t *gl1e, mfn_t gl1mfn,
+    const shadow_l1e_t *sl1e, mfn_t sl1mfn)
+{
+    bool done = false;
+
+#if SHADOW_OPTIMIZATIONS & SHOPT_FAST_FAULT_PATH
+    if ( !sh_l1e_is_gnp(*sl1e) )
+    {
+        gfn_t gfn = sh_l1e_mmio_get_gfn(*sl1e);
+
+        ASSERT(sh_l1e_is_mmio(*sl1e));
+
+        if ( !gfn_eq(gfn, guest_l1e_get_gfn(*gl1e)) )
+            AUDIT_FAIL(1,
+                       "shadow MMIO gfn is %" SH_PRI_gfn " but guest gfn is %" SH_PRI_gfn,
+                       gfn_x(gfn), gfn_x(guest_l1e_get_gfn(*gl1e)));
+    }
+    else if ( guest_l1e_get_flags(*gl1e) & _PAGE_PRESENT )
+        AUDIT_FAIL(1, "shadow is GNP magic but guest is present");
+#endif
+
+    return done;
+}
+
 int cf_check sh_audit_l1_table(struct domain *d, mfn_t sl1mfn, mfn_t x)
 {
     guest_l1e_t *gl1e, *gp;
     shadow_l1e_t *sl1e;
-    mfn_t mfn, gmfn, gl1mfn;
-    gfn_t gfn;
+    mfn_t gl1mfn;
     p2m_type_t p2mt;
     const char *s;
     int done = 0;
@@ -3908,28 +3939,10 @@ int cf_check sh_audit_l1_table(struct domain *d, mfn_t sl1mfn, mfn_t x)
 #endif
 
     gl1e = gp = map_domain_page(gl1mfn);
-    FOREACH_PRESENT_L1E(sl1mfn, sl1e, &gl1e, done, {
-
+    FOREACH_PRESENT_L1E(sl1mfn, sl1e, &gl1e, done,
+    {
         if ( sh_l1e_is_magic(*sl1e) )
-        {
-#if (SHADOW_OPTIMIZATIONS & SHOPT_FAST_FAULT_PATH)
-            if ( sh_l1e_is_gnp(*sl1e) )
-            {
-                if ( guest_l1e_get_flags(*gl1e) & _PAGE_PRESENT )
-                    AUDIT_FAIL(1, "shadow is GNP magic but guest is present");
-            }
-            else
-            {
-                ASSERT(sh_l1e_is_mmio(*sl1e));
-                gfn = sh_l1e_mmio_get_gfn(*sl1e);
-                if ( gfn_x(gfn) != gfn_x(guest_l1e_get_gfn(*gl1e)) )
-                    AUDIT_FAIL(1, "shadow MMIO gfn is %" SH_PRI_gfn
-                               " but guest gfn is %" SH_PRI_gfn,
-                               gfn_x(gfn),
-                               gfn_x(guest_l1e_get_gfn(*gl1e)));
-            }
-#endif
-        }
+            done = audit_magic(gl1e, gl1mfn, sl1e, sl1mfn);
         else
         {
             s = sh_audit_flags(d, 1, guest_l1e_get_flags(*gl1e),
@@ -3938,9 +3951,10 @@ int cf_check sh_audit_l1_table(struct domain *d, mfn_t sl1mfn, mfn_t x)
 
             if ( SHADOW_AUDIT & SHADOW_AUDIT_ENTRIES_MFNS )
             {
-                gfn = guest_l1e_get_gfn(*gl1e);
-                mfn = shadow_l1e_get_mfn(*sl1e);
-                gmfn = get_gfn_query_unlocked(d, gfn_x(gfn), &p2mt);
+                gfn_t gfn = guest_l1e_get_gfn(*gl1e);
+                mfn_t mfn = shadow_l1e_get_mfn(*sl1e);
+                mfn_t gmfn = get_gfn_query_unlocked(d, gfn_x(gfn), &p2mt);
+
                 if ( !p2m_is_grant(p2mt) && !mfn_eq(gmfn, mfn) )
                     AUDIT_FAIL(1, "bad translation: gfn %" SH_PRI_gfn
                                " --> %" PRI_mfn " != mfn %" PRI_mfn,
@@ -4029,6 +4043,17 @@ int cf_check sh_audit_l2_table(struct domain *d, mfn_t sl2mfn, mfn_t x)
 }
 
 #if GUEST_PAGING_LEVELS >= 4
+static always_inline unsigned int type_from_gl3e(
+    const struct domain *d, const guest_l3e_t *gl3e)
+{
+#ifdef CONFIG_PV32
+    if ( guest_index(gl3e) == 3 && is_pv_32bit_domain(d) )
+        return SH_type_l2h_shadow;
+#endif
+
+    return SH_type_l2_shadow;
+}
+
 int cf_check sh_audit_l3_table(struct domain *d, mfn_t sl3mfn, mfn_t x)
 {
     guest_l3e_t *gl3e, *gp;
@@ -4058,14 +4083,10 @@ int cf_check sh_audit_l3_table(struct domain *d, mfn_t sl3mfn, mfn_t x)
 
         if ( SHADOW_AUDIT & SHADOW_AUDIT_ENTRIES_MFNS )
         {
-            unsigned int t = SH_type_l2_shadow;
+            unsigned int t = type_from_gl3e(d, gl3e);
 
             gfn = guest_l3e_get_gfn(*gl3e);
             mfn = shadow_l3e_get_mfn(*sl3e);
-#ifdef CONFIG_PV32
-            if ( guest_index(gl3e) == 3 && is_pv_32bit_domain(d) )
-                t = SH_type_l2h_shadow;
-#endif
             gmfn = get_shadow_status(
                        d, get_gfn_query_unlocked(d, gfn_x(gfn), &p2mt), t);
             if ( !mfn_eq(gmfn, mfn) )
