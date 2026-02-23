@@ -2483,10 +2483,10 @@ static int cf_check sh_page_fault(
         sh_update_cr3(v, false);
 #else
         ASSERT(d->is_shutting_down);
+        sh_trace_va(TRC_SHADOW_DOMF_DYING, va);
 #endif
         paging_unlock(d);
         put_gfn(d, gfn_x(gfn));
-        sh_trace_va(TRC_SHADOW_DOMF_DYING, va);
         return 0;
     }
 
