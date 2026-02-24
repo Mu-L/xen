@@ -795,7 +795,7 @@ static int cf_check init_msix(struct pci_dev *pdev)
 
     /*
      * vPCI header initialization will have mapped the whole BAR into the
-     * p2m, as MSI-X capability was not yet initialized.  Crave a hole for
+     * p2m, as MSI-X capability was not yet initialized.  Carve a hole for
      * the MSI-X table here, so that Xen can trap accesses.
      */
     return vpci_make_msix_hole(pdev);
