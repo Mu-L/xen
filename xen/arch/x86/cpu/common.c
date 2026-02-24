@@ -327,8 +327,8 @@ void __init early_cpu_init(bool verbose)
 	*(u32 *)&c->x86_vendor_id[8] = ecx;
 	*(u32 *)&c->x86_vendor_id[4] = edx;
 
-	c->x86_vendor = x86_cpuid_lookup_vendor(ebx, ecx, edx);
-	switch (c->x86_vendor) {
+	c->vendor = x86_cpuid_lookup_vendor(ebx, ecx, edx);
+	switch (c->vendor) {
 	case X86_VENDOR_INTEL:    intel_unlock_cpuid_leaves(c);
 				  actual_cpu = intel_cpu_dev;    break;
 	case X86_VENDOR_AMD:      actual_cpu = amd_cpu_dev;      break;
@@ -345,7 +345,7 @@ void __init early_cpu_init(bool verbose)
 	}
 
 	cpuid(0x00000001, &eax, &ebx, &ecx, &edx);
-	c->x86 = get_cpu_family(eax, &c->x86_model, &c->x86_mask);
+	c->family = get_cpu_family(eax, &c->model, &c->stepping);
 
 	edx &= ~cleared_caps[FEATURESET_1d];
 	ecx &= ~cleared_caps[FEATURESET_1c];
@@ -389,8 +389,8 @@ void __init early_cpu_init(bool verbose)
 		printk(XENLOG_INFO
 		       "CPU Vendor: %s, Family %u (%#x), "
 		       "Model %u (%#x), Stepping %u (raw %08x)\n",
-		       x86_cpuid_vendor_to_str(c->x86_vendor), c->x86,
-		       c->x86, c->x86_model, c->x86_model, c->x86_mask,
+		       x86_cpuid_vendor_to_str(c->vendor), c->family,
+		       c->family, c->model, c->model, c->stepping,
 		       eax);
 
 	if (c->cpuid_level >= 7) {
@@ -432,7 +432,7 @@ void __init early_cpu_init(bool verbose)
 		paddr_bits -= (ebx >> 6) & 0x3f;
 	}
 
-	if (!(c->x86_vendor & (X86_VENDOR_AMD | X86_VENDOR_HYGON)))
+	if (!(c->vendor & (X86_VENDOR_AMD | X86_VENDOR_HYGON)))
 		park_offline_cpus = opt_mce;
 
 	initialize_cpu_data(0);
@@ -442,10 +442,10 @@ void reset_cpuinfo(struct cpuinfo_x86 *c, bool keep_basic)
 {
     if ( !keep_basic )
     {
-        c->x86_vendor = 0;
-        c->x86 = 0;
-        c->x86_model = 0;
-        c->x86_mask = 0;
+        c->vendor = 0;
+        c->family = 0;
+        c->model = 0;
+        c->stepping = 0;
         memset(&c->x86_capability, 0, sizeof(c->x86_capability));
         memset(&c->x86_vendor_id, 0, sizeof(c->x86_vendor_id));
         memset(&c->x86_model_id, 0, sizeof(c->x86_model_id));
@@ -465,18 +465,18 @@ static void generic_identify(struct cpuinfo_x86 *c)
 	*(u32 *)&c->x86_vendor_id[8] = ecx;
 	*(u32 *)&c->x86_vendor_id[4] = edx;
 
-	c->x86_vendor = x86_cpuid_lookup_vendor(ebx, ecx, edx);
-	if (boot_cpu_data.x86_vendor != c->x86_vendor)
+	c->vendor = x86_cpuid_lookup_vendor(ebx, ecx, edx);
+	if (boot_cpu_data.vendor != c->vendor)
 		printk(XENLOG_ERR "CPU%u vendor %u mismatch against BSP %u\n",
-		       smp_processor_id(), c->x86_vendor,
-		       boot_cpu_data.x86_vendor);
+		       smp_processor_id(), c->vendor,
+		       boot_cpu_data.vendor);
 
 	/* Initialize the standard set of capabilities */
 	/* Note that the vendor-specific code below might override */
 
 	/* Model and family information. */
 	cpuid(1, &eax, &ebx, &ecx, &edx);
-	c->x86 = get_cpu_family(eax, &c->x86_model, &c->x86_mask);
+	c->family = get_cpu_family(eax, &c->model, &c->stepping);
 	c->apicid = phys_pkg_id((ebx >> 24) & 0xFF, 0);
 	c->phys_proc_id = c->apicid;
 
@@ -605,7 +605,7 @@ void identify_cpu(struct cpuinfo_x86 *c)
 	if ( !c->x86_model_id[0] ) {
 		/* Last resort... */
 		snprintf(c->x86_model_id, sizeof(c->x86_model_id),
-			"%02x/%02x", c->x86_vendor, c->x86_model);
+			"%02x/%02x", c->vendor, c->model);
 	}
 
 	/* Now the feature flags better reflect actual CPU features! */
@@ -824,16 +824,16 @@ void print_cpu_info(unsigned int cpu)
 
 	printk("CPU%u: ", cpu);
 
-	vendor = x86_cpuid_vendor_to_str(c->x86_vendor);
+	vendor = x86_cpuid_vendor_to_str(c->vendor);
 	if (strncmp(c->x86_model_id, vendor, strlen(vendor)))
 		printk("%s ", vendor);
 
 	if (!c->x86_model_id[0])
-		printk("%d86", c->x86);
+		printk("%d86", c->family);
 	else
 		printk("%s", c->x86_model_id);
 
-	printk(" stepping %02x\n", c->x86_mask);
+	printk(" stepping %02x\n", c->stepping);
 }
 
 static cpumask_t cpu_initialized;
