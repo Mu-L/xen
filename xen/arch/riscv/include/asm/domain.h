@@ -48,6 +48,8 @@ struct arch_vcpu {
     } xen_saved_context;
 
     struct cpu_info *cpu_info;
+
+    register_t vsatp;
 };
 
 struct paging_domain {

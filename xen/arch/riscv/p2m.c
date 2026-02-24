@@ -1434,3 +1434,103 @@ struct page_info *p2m_get_page_from_gfn(struct p2m_domain *p2m, gfn_t gfn,
 
     return get_page(page, p2m->domain) ? page : NULL;
 }
+
+/*
+ * Must be called before restoring CSRs to avoid potential speculation using
+ * an incorrect set of page tables during updates of VSATP and HGATP.
+ */
+void p2m_ctxt_switch_from(struct vcpu *p)
+{
+    if ( is_idle_vcpu(p) )
+        return;
+
+    /*
+     * No mechanism is provided to atomically change vsatp and hgatp
+     * together. Hence, to prevent speculative execution causing one
+     * guest’s VS-stage translations to be cached under another guest’s
+     * VMID, world-switch code should zero vsatp, then swap hgatp, then
+     * finally write the new vsatp value what will be done in
+     * p2m_ctxt_switch_to().
+     * Note, that also HGATP update could happen in p2m_handle_vmenter().
+     */
+    p->arch.vsatp = csr_swap(CSR_VSATP, 0);
+
+    /*
+     * Nothing to do with HGATP as it will be update in p2m_ctxt_switch_to()
+     * or/and in p2m_handle_vmenter().
+     */
+}
+
+/*
+ * As speculation may occur at any time, an incorrect set of page tables could
+ * be used. Therefore, this function must be called only after all other guest
+ * CSRs have been restored. Otherwise, VS-stage translations could be populated
+ * using stale control state (e.g. SEPC still referring to the previous guest)
+ * while VSATP and HGATP already point to the new guest.
+ */
+void p2m_ctxt_switch_to(struct vcpu *n)
+{
+    struct p2m_domain *p2m = p2m_get_hostp2m(n->domain);
+
+    if ( is_idle_vcpu(n) )
+        return;
+
+    csr_write(CSR_HGATP, construct_hgatp(p2m, n->arch.vmid.vmid));
+    /*
+     * As VMID is unique per vCPU and just re-used here thereby there is no
+     * need for G-stage TLB flush here.
+     */
+
+    csr_write(CSR_VSATP, n->arch.vsatp);
+
+    /*
+     * Since n->arch.vsatp.ASID may equal p->arch.vsatp.ASID,
+     * flush the VS-stage TLB to prevent the new guest from
+     * using stale (not belongs to it) translations.
+     * ASID equality is not the only potential issue here.
+     *
+     * TODO: This could be optimized by making the flush
+     *       conditional.
+     */
+    flush_tlb_guest_local();
+}
+
+void p2m_handle_vmenter(void)
+{
+    struct vcpu *curr = current;
+    struct p2m_domain *p2m = p2m_get_hostp2m(curr->domain);
+    struct vcpu_vmid *p_vmid = &curr->arch.vmid;
+    unsigned short old_vmid, new_vmid;
+    bool need_flush;
+
+    BUG_ON(is_idle_vcpu(curr));
+
+    old_vmid = p_vmid->vmid;
+    need_flush = vmid_handle_vmenter(p_vmid);
+    new_vmid = p_vmid->vmid;
+
+#ifdef P2M_DEBUG
+    printk("%pv: oldvmid(%d) new_vmid(%d), need_flush(%d)\n",
+           curr, old_vmid, new_vmid, need_flush);
+#endif
+
+    /*
+     * There is no need to set VSATP to 0 to stop speculation before updating
+     * HGATP, as VSATP is not modified here.
+     */
+    if ( old_vmid != new_vmid )
+        csr_write(CSR_HGATP, construct_hgatp(p2m, p_vmid->vmid));
+
+    /*
+     * There is also no need to flush G-stage TLB unconditionally as old VMID
+     * won't be reused until need_flush is set to true.
+     */
+    if ( unlikely(need_flush) )
+        local_hfence_gvma_all();
+
+    /*
+     * There is also no need to flush the VS-stage TLB: even if speculation
+     * occurs (VSATP + old HGATP were used), it will use the old VMID, which
+     * won't be reused until need_flush is set to true.
+     */
+}

@@ -255,6 +255,10 @@ static inline bool p2m_is_locked(const struct p2m_domain *p2m)
 struct page_info *p2m_get_page_from_gfn(struct p2m_domain *p2m, gfn_t gfn,
                                         p2m_type_t *t);
 
+void p2m_ctxt_switch_from(struct vcpu *p);
+void p2m_ctxt_switch_to(struct vcpu *n);
+void p2m_handle_vmenter(void);
+
 #endif /* ASM__RISCV__P2M_H */
 
 /*

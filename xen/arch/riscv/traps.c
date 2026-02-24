@@ -169,6 +169,11 @@ static void do_unexpected_trap(const struct cpu_user_regs *regs)
     die();
 }
 
+static void check_for_pcpu_work(void)
+{
+    p2m_handle_vmenter();
+}
+
 void do_trap(struct cpu_user_regs *cpu_regs)
 {
     register_t pc = cpu_regs->sepc;
@@ -222,6 +227,9 @@ void do_trap(struct cpu_user_regs *cpu_regs)
         do_unexpected_trap(cpu_regs);
         break;
     }
+
+    if ( cpu_regs->hstatus & HSTATUS_SPV )
+        check_for_pcpu_work();
 }
 
 void vcpu_show_execution_state(struct vcpu *v)
