@@ -120,9 +120,9 @@ void shadow_vcpu_init(struct vcpu *v)
     }
 #endif
 
-    v->arch.paging.mode = is_hvm_vcpu(v) ?
-                          &SHADOW_INTERNAL_NAME(sh_paging_mode, 3) :
-                          &SHADOW_INTERNAL_NAME(sh_paging_mode, 4);
+    v->arch.paging.mode = paging_mode_external(v->domain)
+                          ? &SHADOW_INTERNAL_NAME(sh_paging_mode, 2)
+                          : &SHADOW_INTERNAL_NAME(sh_paging_mode, 4);
 }
 
 #if SHADOW_AUDIT
@@ -1802,7 +1802,7 @@ static void sh_update_paging_modes(struct vcpu *v)
         sh_detach_old_tables(v);
 
 #ifdef CONFIG_HVM
-    if ( is_hvm_domain(d) )
+    if ( paging_mode_external(d) )
     {
         const struct paging_mode *old_mode = v->arch.paging.mode;
 
@@ -1855,13 +1855,12 @@ static void sh_update_paging_modes(struct vcpu *v)
             make_cr3(v, mmfn);
             hvm_update_host_cr3(v);
         }
-
-        if ( v->arch.paging.mode != old_mode )
+        else if ( v->arch.paging.mode != old_mode )
         {
             SHADOW_PRINTK("new paging mode: %pv pe=%d gl=%u "
                           "sl=%u (was g=%u s=%u)\n",
                           v,
-                          is_hvm_domain(d) ? hvm_paging_enabled(v) : 1,
+                          hvm_paging_enabled(v),
                           v->arch.paging.mode->guest_levels,
                           v->arch.paging.mode->shadow.shadow_levels,
                           old_mode ? old_mode->guest_levels : 0,
