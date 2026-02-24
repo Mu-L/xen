@@ -1161,7 +1161,7 @@ int main(int argc, char **argv)
     instr[0] = 0x4d; instr[1] = 0x0f; instr[2] = 0xbb; instr[3] = 0x03;
     regs.eflags = EFLAGS_ALWAYS_SET;
     regs.rip    = (unsigned long)&instr[0];
-    regs.r8     = (-1L << 40) + 1;
+    regs.r8     = (~0UL << 40) + 1;
     regs.r11    = (unsigned long)(res + (1L << 35));
     rc = x86_emulate(&ctxt, &emulops);
     if ( (rc != X86EMUL_OKAY) ||
