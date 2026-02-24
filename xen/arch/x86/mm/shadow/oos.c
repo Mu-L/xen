@@ -577,7 +577,6 @@ int sh_unsync(struct vcpu *v, mfn_t gmfn)
     if ( (pg->shadow_flags &
           ((SHF_page_type_mask & ~SHF_L1_ANY) | SHF_out_of_sync)) ||
          sh_page_has_multiple_shadows(pg) ||
-         !is_hvm_vcpu(v) ||
          !v->domain->arch.paging.shadow.oos_active )
         return 0;
 

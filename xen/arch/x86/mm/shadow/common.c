@@ -1512,7 +1512,7 @@ int sh_remove_all_mappings(struct domain *d, mfn_t gmfn, gfn_t gfn)
                && (page->count_info & PGC_count_mask) <= 3
                && ((page->u.inuse.type_info & PGT_count_mask)
                    == (is_special_page(page) ||
-                       (is_hvm_domain(d) && is_ioreq_server_page(d, page))))) )
+                       is_ioreq_server_page(d, page)))) )
             printk(XENLOG_G_ERR "can't find all mappings of mfn %"PRI_mfn
                    " (gfn %"PRI_gfn"): c=%lx t=%lx s=%d i=%d\n",
                    mfn_x(gmfn), gfn_x(gfn),

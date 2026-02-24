@@ -3444,7 +3444,7 @@ int sh_rm_write_access_from_sl1p(struct domain *d, mfn_t gmfn,
     ASSERT(mfn_valid(smfn));
 
     /* Remember if we've been told that this process is being torn down */
-    if ( curr->domain == d && is_hvm_domain(d) )
+    if ( curr->domain == d )
         curr->arch.paging.shadow.pagetable_dying
             = mfn_to_page(gmfn)->pagetable_dying;
 

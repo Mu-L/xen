@@ -192,10 +192,6 @@ hvm_emulate_write(enum x86_segment seg,
     if ( rc || !bytes )
         return rc;
 
-    /* Unaligned writes are only acceptable on HVM */
-    if ( (addr & (bytes - 1)) && !is_hvm_vcpu(v)  )
-        return X86EMUL_UNHANDLEABLE;
-
     ptr = sh_emulate_map_dest(v, addr, bytes, sh_ctxt);
     if ( IS_ERR(ptr) )
         return ~PTR_ERR(ptr);
@@ -247,10 +243,6 @@ hvm_emulate_cmpxchg(enum x86_segment seg,
         seg, offset, bytes, hvm_access_write, sh_ctxt, &addr);
     if ( rc )
         return rc;
-
-    /* Unaligned writes are only acceptable on HVM */
-    if ( (addr & (bytes - 1)) && !is_hvm_vcpu(v)  )
-        return X86EMUL_UNHANDLEABLE;
 
     ptr = sh_emulate_map_dest(v, addr, bytes, sh_ctxt);
     if ( IS_ERR(ptr) )
@@ -466,8 +458,7 @@ static void *sh_emulate_map_dest(struct vcpu *v, unsigned long vaddr,
 
 #ifndef NDEBUG
     /* We don't emulate user-mode writes to page tables. */
-    if ( is_hvm_domain(d) ? hvm_get_cpl(v) == 3
-                          : !guest_kernel_mode(v, guest_cpu_user_regs()) )
+    if ( hvm_get_cpl(v) == 3 )
     {
         gdprintk(XENLOG_DEBUG, "User-mode write to pagetable reached "
                  "emulate_map_dest(). This should never happen!\n");
@@ -495,15 +486,6 @@ static void *sh_emulate_map_dest(struct vcpu *v, unsigned long vaddr,
         /* Whole write fits on a single page. */
         sh_ctxt->mfn[1] = INVALID_MFN;
         map = map_domain_page(sh_ctxt->mfn[0]) + (vaddr & ~PAGE_MASK);
-    }
-    else if ( !is_hvm_domain(d) )
-    {
-        /*
-         * Cross-page emulated writes are only supported for HVM guests;
-         * PV guests ought to know better.
-         */
-        put_page(mfn_to_page(sh_ctxt->mfn[0]));
-        return MAPPING_UNHANDLEABLE;
     }
     else
     {
