@@ -3435,9 +3435,7 @@ static pagetable_t cf_check sh_update_cr3(struct vcpu *v, bool noflush)
 int sh_rm_write_access_from_sl1p(struct domain *d, mfn_t gmfn,
                                  mfn_t smfn, unsigned long off)
 {
-#ifdef CONFIG_HVM
     struct vcpu *curr = current;
-#endif
     int r;
     shadow_l1e_t *sl1p, sl1e;
     struct page_info *sp;
@@ -3445,12 +3443,10 @@ int sh_rm_write_access_from_sl1p(struct domain *d, mfn_t gmfn,
     ASSERT(mfn_valid(gmfn));
     ASSERT(mfn_valid(smfn));
 
-#ifdef CONFIG_HVM
     /* Remember if we've been told that this process is being torn down */
     if ( curr->domain == d && is_hvm_domain(d) )
         curr->arch.paging.shadow.pagetable_dying
             = mfn_to_page(gmfn)->pagetable_dying;
-#endif
 
     sp = mfn_to_page(smfn);
 
