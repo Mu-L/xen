@@ -87,7 +87,7 @@ void init_waitqueue_head(struct waitqueue_head *wq)
 
 void destroy_waitqueue_head(struct waitqueue_head *wq)
 {
-    wake_up_all(wq);
+    wake_up_nr(wq, UINT_MAX);
 }
 
 void wake_up_nr(struct waitqueue_head *wq, unsigned int nr)
@@ -105,16 +105,6 @@ void wake_up_nr(struct waitqueue_head *wq, unsigned int nr)
     }
 
     spin_unlock(&wq->lock);
-}
-
-void wake_up_one(struct waitqueue_head *wq)
-{
-    wake_up_nr(wq, 1);
-}
-
-void wake_up_all(struct waitqueue_head *wq)
-{
-    wake_up_nr(wq, UINT_MAX);
 }
 
 #ifdef CONFIG_X86
