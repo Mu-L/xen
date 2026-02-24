@@ -1855,6 +1855,8 @@ static void sh_update_paging_modes(struct vcpu *v)
             make_cr3(v, mmfn);
             hvm_update_host_cr3(v);
         }
+        else if ( !old_mode )
+            ASSERT_UNREACHABLE();
         else if ( v->arch.paging.mode != old_mode )
         {
             SHADOW_PRINTK("new paging mode: %pv pe=%d gl=%u "
@@ -1863,11 +1865,10 @@ static void sh_update_paging_modes(struct vcpu *v)
                           hvm_paging_enabled(v),
                           v->arch.paging.mode->guest_levels,
                           v->arch.paging.mode->shadow.shadow_levels,
-                          old_mode ? old_mode->guest_levels : 0,
-                          old_mode ? old_mode->shadow.shadow_levels : 0);
-            if ( old_mode &&
-                 (v->arch.paging.mode->shadow.shadow_levels !=
-                  old_mode->shadow.shadow_levels) )
+                          old_mode->guest_levels,
+                          old_mode->shadow.shadow_levels);
+            if ( v->arch.paging.mode->shadow.shadow_levels !=
+                 old_mode->shadow.shadow_levels )
             {
                 /* Need to make a new monitor table for the new mode */
                 mfn_t new_mfn, old_mfn;
