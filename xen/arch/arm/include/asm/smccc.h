@@ -114,26 +114,17 @@ struct arm_smccc_res {
 
 #define __declare_arg_1(a0, a1, res)                        \
     typeof(a1) __a1 = (a1);                                 \
-    struct arm_smccc_res    *___res = (res);                \
-    register unsigned long  arg0 ASM_REG(0) = (uint32_t)(a0);\
+    __declare_arg_0(a0, res);                               \
     register typeof(a1)     arg1 ASM_REG(1) = __a1
 
 #define __declare_arg_2(a0, a1, a2, res)                    \
-    typeof(a1) __a1 = (a1);                                 \
     typeof(a2) __a2 = (a2);                                 \
-    struct arm_smccc_res    *___res = (res);                \
-    register unsigned long  arg0 ASM_REG(0) = (uint32_t)(a0);\
-    register typeof(a1)     arg1 ASM_REG(1) = __a1;         \
+    __declare_arg_1(a0, a1, res);                           \
     register typeof(a2)     arg2 ASM_REG(2) = __a2
 
 #define __declare_arg_3(a0, a1, a2, a3, res)                \
-    typeof(a1) __a1 = (a1);                                 \
-    typeof(a2) __a2 = (a2);                                 \
     typeof(a3) __a3 = (a3);                                 \
-    struct arm_smccc_res    *___res = (res);                \
-    register unsigned long  arg0 ASM_REG(0) = (uint32_t)(a0);\
-    register typeof(a1)     arg1 ASM_REG(1) = __a1;         \
-    register typeof(a2)     arg2 ASM_REG(2) = __a2;         \
+    __declare_arg_2(a0, a1, a2, res);                       \
     register typeof(a3)     arg3 ASM_REG(3) = __a3
 
 #define __declare_arg_4(a0, a1, a2, a3, a4, res)        \
