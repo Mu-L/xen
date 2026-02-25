@@ -1,3 +1,4 @@
+lib-y += copy-from-buffer.o
+lib-y += copy-to-buffer.o
 lib-y += cpuid.o
-lib-y += msr.o
 lib-y += policy.o
