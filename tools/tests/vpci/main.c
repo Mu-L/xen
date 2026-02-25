@@ -189,8 +189,6 @@ main(int argc, char **argv)
     uint32_t r24 = 0;
     uint8_t r28, r30;
     struct mask_data r32;
-    unsigned int i;
-    int rc;
 
     INIT_LIST_HEAD(&vpci.handlers);
     spin_lock_init(&vpci.lock);
