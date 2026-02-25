@@ -17,7 +17,7 @@ vpath x86_emulate/%.h $(XEN_ROOT)/xen/arch/x86
 HOSTCFLAGS += -iquote $(XEN_ROOT)/xen/arch/x86
 
 # Add libx86 to the build
-vpath %.c $(XEN_ROOT)/xen/lib/x86
+vpath %.c $(XEN_ROOT)/xen/arch/x86/lib/cpu-policy
 
 CFLAGS += $(CFLAGS_xeninclude)
 

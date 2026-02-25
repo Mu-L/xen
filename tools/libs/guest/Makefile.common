@@ -33,9 +33,12 @@ LIBELF_OBJS += libelf-dominfo.o
 OBJS-y += $(LIBELF_OBJS)
 
 ifeq ($(CONFIG_X86),y) # Add libx86 to the build
-vpath %.c ../../../xen/lib/x86
+vpath %.c $(XEN_ROOT)/xen/arch/x86/lib/cpu-policy
 
-OBJS-y                 += cpuid.o msr.o policy.o
+lib-y :=
+include $(XEN_ROOT)/xen/arch/x86/lib/cpu-policy/Makefile.common
+
+OBJS-y                 += $(lib-y)
 endif
 
 # new domain builder

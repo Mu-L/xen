@@ -20,9 +20,12 @@ install: all
 CFLAGS += $(CFLAGS_xeninclude) -D__XEN_TOOLS__
 CFLAGS += $(APPEND_CFLAGS) -Og
 
-vpath %.c ../../../xen/lib/x86
+vpath %.c $(XEN_ROOT)/xen/arch/x86/lib/cpu-policy
 
-afl-policy-fuzzer: afl-policy-fuzzer.o msr.o cpuid.o
+lib-y :=
+include $(XEN_ROOT)/xen/arch/x86/lib/cpu-policy/Makefile.common
+
+afl-policy-fuzzer: afl-policy-fuzzer.o $(lib-y)
 	$(CC) $(CFLAGS) $^ -o $@
 
 -include $(DEPS_INCLUDE)

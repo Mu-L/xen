@@ -42,11 +42,14 @@ CFLAGS += $(APPEND_CFLAGS)
 
 LDFLAGS += $(APPEND_LDFLAGS)
 
-vpath %.c ../../../xen/lib/x86
+vpath %.c $(XEN_ROOT)/xen/arch/x86/lib/cpu-policy
+
+lib-y :=
+include $(XEN_ROOT)/xen/arch/x86/lib/cpu-policy/Makefile.common
 
 %.o: Makefile
 
-test-cpu-policy: test-cpu-policy.o msr.o cpuid.o policy.o
+test-cpu-policy: test-cpu-policy.o $(lib-y)
 	$(CC) $^ -o $@ $(LDFLAGS)
 
 -include $(DEPS_INCLUDE)

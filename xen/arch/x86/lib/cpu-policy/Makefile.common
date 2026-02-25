@@ -1,0 +1,3 @@
+lib-y += cpuid.o
+lib-y += msr.o
+lib-y += policy.o

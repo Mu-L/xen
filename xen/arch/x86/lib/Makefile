@@ -6,3 +6,5 @@ lib-y += generic-hweightl.o
 lib-y += memcpy.o
 lib-y += memset.o
 lib-y += scrub-page.o
+
+obj-y += cpu-policy/

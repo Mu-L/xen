@@ -4,6 +4,7 @@
 export XEN_IMG_OFFSET := 0x200000
 
 ARCH_LIBS-y += arch/x86/lib/lib.a
+ARCH_LIBS-y += arch/x86/lib/cpu-policy/lib.a
 
 CFLAGS += -DXEN_IMG_OFFSET=$(XEN_IMG_OFFSET)
 

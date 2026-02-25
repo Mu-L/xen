@@ -21,7 +21,7 @@ vpath %.h ../../tests/x86_emulator
 CFLAGS += -iquote ../../tests/x86_emulator
 
 # Add libx86 to the build
-vpath %.c $(XEN_ROOT)/xen/lib/x86
+vpath %.c $(XEN_ROOT)/xen/arch/x86/lib/cpu-policy
 
 x86_emulate:
 	mkdir -p $@
