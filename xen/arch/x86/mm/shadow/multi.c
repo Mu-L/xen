@@ -634,35 +634,36 @@ _sh_propagate(struct vcpu *v,
         sflags |= _PAGE_UC;
     }
 
-    // protect guest page tables
-    //
-    if ( unlikely((level == 1)
-                  && sh_mfn_is_a_page_table(target_mfn)
-#if (SHADOW_OPTIMIZATIONS & SHOPT_OUT_OF_SYNC )
-                  /* Unless the page is out of sync and the guest is
-                     writing to it. */
-                  && !(mfn_oos_may_write(target_mfn)
-                       && (ft == ft_demand_write))
-#endif /* OOS */
-                  ) )
-        sflags &= ~_PAGE_RW;
-
-    /*
-     * shadow_mode_log_dirty support
-     *
-     * Only allow the guest write access to a page a) on a demand fault,
-     * or b) if the page is already marked as dirty.
-     *
-     * (We handle log-dirty entirely inside the shadow code, without using the
-     * p2m_ram_logdirty p2m type: only HAP uses that.)
-     */
-    if ( level == 1 && unlikely(paging_mode_log_dirty(d)) && !mmio_mfn )
+    if ( level == 1 )
     {
-        if ( ft & FETCH_TYPE_WRITE )
-            paging_mark_dirty(d, target_mfn);
-        else if ( (sflags & _PAGE_RW) &&
-                  !paging_mfn_is_dirty(d, target_mfn) )
+        /* Protect guest page tables. */
+        if ( unlikely(sh_mfn_is_a_page_table(target_mfn))
+#if SHADOW_OPTIMIZATIONS & SHOPT_OUT_OF_SYNC
+             /*
+              * Unless the page is out of sync and the guest is writing to it.
+              */
+             && (ft != ft_demand_write || !mfn_oos_may_write(target_mfn))
+#endif /* OOS */
+           )
             sflags &= ~_PAGE_RW;
+
+        /*
+         * shadow_mode_log_dirty support
+         *
+         * Only allow the guest write access to a page a) on a demand fault,
+         * or b) if the page is already marked as dirty.
+         *
+         * (We handle log-dirty entirely inside the shadow code, without using
+         * the p2m_ram_logdirty p2m type: only HAP uses that.)
+         */
+        if ( unlikely(paging_mode_log_dirty(d)) && !mmio_mfn )
+        {
+            if ( ft & FETCH_TYPE_WRITE )
+                paging_mark_dirty(d, target_mfn);
+            else if ( (sflags & _PAGE_RW) &&
+                      !paging_mfn_is_dirty(d, target_mfn) )
+                sflags &= ~_PAGE_RW;
+        }
     }
 
     // PV guests in 64-bit mode use two different page tables for user vs
